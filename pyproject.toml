@@ -1,12 +1,14 @@
 [tool.poetry]
 name = "supertennisai"
 version = "0.1.0"
-description = "SuperTennis AI agent that beats the crap out of original game AIs."
+description = ""
 authors = ["Javier <javier.smith.dlc@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "~3.8"
+python = "3.10.12"
+stable-retro = {git = "git@github.com:Farama-Foundation/stable-retro.git"}
+stable-baselines3 = {extras = ["extra"], version = "^2.3.2"}
 
 
 [build-system]

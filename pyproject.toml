@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "supertennisai"
+version = "0.1.0"
+description = "SuperTennis AI agent that beats the crap out of original game AIs."
+authors = ["Javier <javier.smith.dlc@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

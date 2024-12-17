@@ -1,0 +1,26 @@
+{
+  "crop": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "done": {
+    "variables": {
+      "total_sets": {
+        "op": "equal",
+        "reference": 1
+      }
+    }
+  },
+  "reward": {
+    "variables": {
+      "opponent_points": {
+        "reward": -1.0
+      },
+      "player_points": {
+        "reward": 1.0
+      }
+    }
+  }
+}

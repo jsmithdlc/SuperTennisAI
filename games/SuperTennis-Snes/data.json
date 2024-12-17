@@ -1,0 +1,16 @@
+{
+  "info": {
+    "opponent_points": {
+      "address": 407,
+      "type": "<d2"
+    },
+    "player_points": {
+      "address": 405,
+      "type": "<d2"
+    },
+    "total_sets": {
+      "address": 342,
+      "type": "|u1"
+    }
+  }
+}

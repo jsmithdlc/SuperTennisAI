@@ -12,9 +12,13 @@ import retro
 # add custom game integration folder path to retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 
+from datetime import datetime
+
 from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3 import PPO
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
+from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecFrameStack,
@@ -23,6 +27,13 @@ from stable_baselines3.common.vec_env import (
 
 
 class StochasticFrameSkip(gym.Wrapper):
+    """
+    Stores most previous action and use it over environment only updating it in each step
+    based on outcome of stickprob trial. Sort of like StickyAction Wrapper combined with frameskip
+
+    Read: https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/
+    """
+
     def __init__(self, env, n, stickprob):
         gym.Wrapper.__init__(self, env)
         self.n = n
@@ -70,6 +81,7 @@ def make_retro(*, game, state=None, max_episode_steps=4500, **kwargs):
     env = StochasticFrameSkip(env, n=4, stickprob=0.25)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
+    env = Monitor(env)
     return env
 
 
@@ -84,33 +96,36 @@ def wrap_deepmind_retro(env):
 
 def main():
 
+    render_mode = None
     game = "SuperTennis-Snes"
     state = retro.State.DEFAULT
     scenario = None
 
     def make_env():
-        env = make_retro(game=game, state=state, scenario=scenario)
+        env = make_retro(
+            game=game, state=state, scenario=scenario, render_mode=render_mode
+        )
         env = wrap_deepmind_retro(env)
         return env
 
     venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env] * 8), n_stack=4))
+
+    tb_logname = f"ppo_super_tennis_{datetime.now().strftime('%H_%M_%S__%d_%m_%Y')}"
     model = PPO(
         policy="CnnPolicy",
+        tensorboard_log="./logs/tensorboard/",
         env=venv,
         learning_rate=lambda f: f * 2.5e-4,
         n_steps=128,
-        batch_size=32,
+        batch_size=64,
         n_epochs=4,
-        gamma=0.99,
+        gamma=0.995,
         gae_lambda=0.95,
         clip_range=0.1,
         ent_coef=0.01,
         verbose=1,
     )
-    model.learn(
-        total_timesteps=100_000_000,
-        log_interval=1,
-    )
+    model.learn(total_timesteps=100_000_000, tb_log_name=tb_logname, log_interval=1)
     model.save("./logs/super_tennis_ppo/")
 
 

@@ -13,7 +13,7 @@ import retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 
 from datetime import datetime
-
+import pprint
 from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3 import PPO
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
@@ -100,6 +100,13 @@ def main():
     game = "SuperTennis-Snes"
     state = retro.State.DEFAULT
     scenario = None
+    initial_lr = 1e-4
+    clip_range = 0.1
+    ent_coef = 0.005
+    batch_size = 128
+    gamma = 0.995
+
+
 
     def make_env():
         env = make_retro(
@@ -115,17 +122,26 @@ def main():
         policy="CnnPolicy",
         tensorboard_log="./logs/tensorboard/",
         env=venv,
-        learning_rate=lambda f: f * 2.5e-4,
+        learning_rate=lambda f: f * initial_lr,
         n_steps=128,
-        batch_size=64,
+        batch_size=batch_size,
         n_epochs=4,
-        gamma=0.995,
+        gamma=gamma,
         gae_lambda=0.95,
-        clip_range=0.1,
-        ent_coef=0.01,
+        clip_range=clip_range,
+        ent_coef=ent_coef,
         verbose=1,
     )
-    model.learn(total_timesteps=100_000_000, tb_log_name=tb_logname, log_interval=1)
+    print("Hyperparameters set to:")
+    pprint.pprint({
+        "initial_lr":initial_lr,
+        "batch_size":batch_size,
+        "gamma":gamma,
+        "clip_range":clip_range,
+        "ent_coef":ent_coef
+    })
+    print("\n")
+    model.learn(total_timesteps=100_000_000, tb_log_name=tb_logname, log_interval=10)
     model.save("./logs/super_tennis_ppo/")
 
 

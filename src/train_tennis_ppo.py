@@ -105,6 +105,7 @@ def main():
     ent_coef = 0.005
     batch_size = 128
     gamma = 0.995
+    gae_lambda = 0.98
 
 
 
@@ -127,7 +128,7 @@ def main():
         batch_size=batch_size,
         n_epochs=4,
         gamma=gamma,
-        gae_lambda=0.95,
+        gae_lambda=gae_lambda,
         clip_range=clip_range,
         ent_coef=ent_coef,
         verbose=1,
@@ -138,10 +139,11 @@ def main():
         "batch_size":batch_size,
         "gamma":gamma,
         "clip_range":clip_range,
-        "ent_coef":ent_coef
+        "ent_coef":ent_coef,
+        "gae_lambda":gae_lambda
     })
     print("\n")
-    model.learn(total_timesteps=100_000_000, tb_log_name=tb_logname, log_interval=10)
+    model.learn(total_timesteps=20_000_000, tb_log_name=tb_logname, log_interval=10)
     model.save("./logs/super_tennis_ppo/")
 
 

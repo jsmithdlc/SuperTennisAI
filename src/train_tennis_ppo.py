@@ -12,8 +12,9 @@ import retro
 # add custom game integration folder path to retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 
-from datetime import datetime
 import pprint
+from datetime import datetime
+
 from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3 import PPO
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
@@ -98,7 +99,7 @@ def main():
 
     render_mode = None
     game = "SuperTennis-Snes"
-    state = retro.State.DEFAULT
+    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
     scenario = None
     initial_lr = 1e-4
     clip_range = 0.1
@@ -106,8 +107,7 @@ def main():
     batch_size = 128
     gamma = 0.995
     gae_lambda = 0.98
-
-
+    log_tensorboard = False
 
     def make_env():
         env = make_retro(
@@ -116,9 +116,23 @@ def main():
         env = wrap_deepmind_retro(env)
         return env
 
+    # create training and evaluation environments
     venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env] * 8), n_stack=4))
+    eval_venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
 
-    tb_logname = f"ppo_super_tennis_{datetime.now().strftime('%H_%M_%S__%d_%m_%Y')}"
+    logname = f"ppo_super_tennis_{datetime.now().strftime('%H_%M_%S__%d_%m_%Y')}"
+
+    # evaluation callback
+    eval_cb = EvalCallback(
+        eval_venv,
+        best_model_save_path=os.path.join("./logs", "checkpoints", logname),
+        log_path=os.path.join("./logs", "eval_metrics", logname),
+        render=False,
+        deterministic=True,
+        eval_freq=1000,
+        n_eval_episodes=2,
+    )
+
     model = PPO(
         policy="CnnPolicy",
         tensorboard_log="./logs/tensorboard/",
@@ -134,17 +148,24 @@ def main():
         verbose=1,
     )
     print("Hyperparameters set to:")
-    pprint.pprint({
-        "initial_lr":initial_lr,
-        "batch_size":batch_size,
-        "gamma":gamma,
-        "clip_range":clip_range,
-        "ent_coef":ent_coef,
-        "gae_lambda":gae_lambda
-    })
+    pprint.pprint(
+        {
+            "initial_lr": initial_lr,
+            "batch_size": batch_size,
+            "gamma": gamma,
+            "clip_range": clip_range,
+            "ent_coef": ent_coef,
+            "gae_lambda": gae_lambda,
+        }
+    )
     print("\n")
-    model.learn(total_timesteps=20_000_000, tb_log_name=tb_logname, log_interval=10)
-    model.save("./logs/super_tennis_ppo/")
+    model.learn(
+        total_timesteps=20_000_000,
+        callback=eval_cb,
+        tb_log_name=logname,
+        log_interval=10,
+    )
+    model.save(os.path.join("./logs", "checkpoints", logname, "last_model"))
 
 
 if __name__ == "__main__":

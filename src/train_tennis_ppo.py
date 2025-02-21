@@ -103,11 +103,12 @@ def main():
     scenario = None
     initial_lr = 1e-4
     clip_range = 0.1
-    ent_coef = 0.005
+    ent_coef = 0.007
     batch_size = 128
     gamma = 0.995
     gae_lambda = 0.98
     log_tensorboard = False
+    n_envs = 8
 
     def make_env():
         env = make_retro(
@@ -117,7 +118,7 @@ def main():
         return env
 
     # create training and evaluation environments
-    venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env] * 8), n_stack=4))
+    venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env] * n_envs), n_stack=4))
     eval_venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
 
     logname = f"ppo_super_tennis_{datetime.now().strftime('%H_%M_%S__%d_%m_%Y')}"
@@ -129,7 +130,7 @@ def main():
         log_path=os.path.join("./logs", "eval_metrics", logname),
         render=False,
         deterministic=True,
-        eval_freq=1000,
+        eval_freq=1_000_000 // n_envs,
         n_eval_episodes=2,
     )
 
@@ -160,10 +161,10 @@ def main():
     )
     print("\n")
     model.learn(
-        total_timesteps=20_000_000,
+        total_timesteps=40_000_000,
         callback=eval_cb,
         tb_log_name=logname,
-        log_interval=10,
+        log_interval=1,
     )
     model.save(os.path.join("./logs", "checkpoints", logname, "last_model"))
 

@@ -16,6 +16,7 @@ import json
 from torch import nn
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
+from .optuna_utils import TrialEvalCallback
 from typing import Any
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage, SubprocVecEnv
@@ -27,11 +28,13 @@ from src.train_tennis_ppo import make_retro, wrap_deepmind_retro
 N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 N_EVALUATIONS = 2
-N_TIMESTEPS = int(1e4)
+N_TIMESTEPS = int(5e6)
 STARTING_STATE = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
 STUDY_PATH = "./logs/optuna"
 EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
 N_EVAL_EPISODES = 3
+TIMEOUT_S = 60 * 60 * 12 # stop optuna study after this number of seconds
+
 
 DEFAULT_HYPERPARAMS = {
     "policy": "CnnPolicy"
@@ -104,41 +107,6 @@ def make_supertennis_env():
     env = wrap_deepmind_retro(env)
     return env
 
-
-class TrialEvalCallback(EvalCallback):
-    """Callback used for evaluating and reporting a trial."""
-
-    def __init__(
-        self,
-        eval_env: gymnasium.Env,
-        trial: optuna.Trial,
-        n_eval_episodes: int = 5,
-        eval_freq: int = 10000,
-        deterministic: bool = True,
-        verbose: int = 0,
-    ):
-        super().__init__(
-            eval_env=eval_env,
-            n_eval_episodes=n_eval_episodes,
-            eval_freq=eval_freq,
-            deterministic=deterministic,
-            verbose=verbose,
-        )
-        self.trial = trial
-        self.eval_idx = 0
-        self.is_pruned = False
-
-    def _on_step(self) -> bool:
-        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-            super()._on_step()
-            self.eval_idx += 1
-            self.trial.report(self.last_mean_reward, self.eval_idx)
-            # Prune trial if need.
-            if self.trial.should_prune():
-                self.is_pruned = True
-                return False
-        return True
-
 def objective(trial: optuna.Trial) -> float:
     kwargs = DEFAULT_HYPERPARAMS.copy()
     # Sample hyperparameters.
@@ -161,7 +129,13 @@ def objective(trial: optuna.Trial) -> float:
 
     # Create the callback that will periodically evaluate and report the performance.
     eval_callback = TrialEvalCallback(
-        eval_env, trial, n_eval_episodes=N_EVAL_EPISODES, eval_freq=EVAL_FREQ, deterministic=True
+        eval_env, 
+        trial, 
+        best_model_save_path = trial_path,
+        log_path = trial_path,
+        n_eval_episodes=N_EVAL_EPISODES, 
+        eval_freq=EVAL_FREQ, 
+        deterministic=True
     )
 
     with open(os.path.join(trial_path, "params.json"), "w") as f:
@@ -184,6 +158,7 @@ def objective(trial: optuna.Trial) -> float:
         return float("nan")
 
     if eval_callback.is_pruned:
+        print(f"Trial: {str(trial.number)} pruned")
         raise optuna.exceptions.TrialPruned()
 
     return eval_callback.last_mean_reward
@@ -197,13 +172,13 @@ if __name__ == "__main__":
     pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3)
 
     study = optuna.create_study(
-        study_name = "ppo_supertennis_tuning", 
+        study_name = "ppo_supertennis_tuning_v2", 
         sampler=sampler, 
         pruner=pruner, 
         direction="maximize",
         load_if_exists = True)
     try:
-        study.optimize(objective, n_trials=N_TRIALS, timeout=900)
+        study.optimize(objective, n_trials=N_TRIALS, timeout = TIMEOUT_S)
     except KeyboardInterrupt:
         pass
 

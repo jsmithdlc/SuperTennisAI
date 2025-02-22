@@ -103,10 +103,10 @@ def main():
     scenario = None
     initial_lr = 1e-4
     clip_range = 0.1
-    ent_coef = 0.007
+    ent_coef = 0.01
     batch_size = 128
     gamma = 0.995
-    gae_lambda = 0.98
+    gae_lambda = 0.95
     log_tensorboard = False
     n_envs = 8
 
@@ -161,10 +161,10 @@ def main():
     )
     print("\n")
     model.learn(
-        total_timesteps=40_000_000,
+        total_timesteps=10_000_000,
         callback=eval_cb,
         tb_log_name=logname,
-        log_interval=1,
+        log_interval=10,
     )
     model.save(os.path.join("./logs", "checkpoints", logname, "last_model"))
 

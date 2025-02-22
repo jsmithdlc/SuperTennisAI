@@ -38,7 +38,7 @@ def record_game(model, env:gymnasium.Env, video_path, video_length = 1000):
 
 def main():
     game = "SuperTennis-Snes"
-    state = retro.State.DEFAULT
+    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
     scenario = None
     render_mode = "rgb_array"
     model_path = "./logs/checkpoints/ppo_super_tennis_00_06_06__21_02_2025/best_model"

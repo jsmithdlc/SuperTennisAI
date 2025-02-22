@@ -4,6 +4,7 @@ https://github.com/DLR-RM/rl-baselines3-zoo
 
 """
 import retro 
+import os
 
 # add custom game integration folder path to retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
@@ -11,35 +12,30 @@ retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 import torch
 import gymnasium
 import optuna
+import json
+from torch import nn
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
 from typing import Any
-from stable_baselines3.common import EvalCallback
-from stable_baselines3.common.env import VecFrameStack, VecTransposeImage, SubprocVecEnv
+from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage, SubprocVecEnv
 from stable_baselines3.ppo import PPO
 from src.train_tennis_ppo import make_retro, wrap_deepmind_retro
+
+
 
 N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 N_EVALUATIONS = 2
-N_TIMESTEPS = int(2e4)
+N_TIMESTEPS = int(1e4)
 STARTING_STATE = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
-EVAL_FREQ = int(N_TIMESTEPS / N_EVALUATIONS)
+STUDY_PATH = "./logs/optuna"
+EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
 N_EVAL_EPISODES = 3
 
 DEFAULT_HYPERPARAMS = {
     "policy": "CnnPolicy"
 }
-
-def make_supertennis_env():
-    env = make_retro(
-        game = "SuperTennis-Snes",
-        state= STARTING_STATE,
-        scenario = None,
-        render_mode = None
-    )
-    env = wrap_deepmind_retro(env)
-    return env
 
 def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     """
@@ -60,7 +56,6 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     vf_coef = trial.suggest_float("vf_coef", 0, 1)
     net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
     # Orthogonal initialization
-    ortho_init = False
     activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
     # lr_schedule = "constant"
     # Uncomment to enable learning rate schedule
@@ -80,7 +75,6 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
         "medium": dict(pi=[256, 256], vf=[256, 256]),
     }[net_arch_type]
 
-    activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU, "elu": nn.ELU, "leaky_relu": nn.LeakyReLU}[activation_fn_name]
 
     return {
         "n_steps": n_steps,
@@ -96,11 +90,19 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
         # "sde_sample_freq": sde_sample_freq,
         "policy_kwargs": dict(
             # log_std_init=log_std_init,
-            net_arch=net_arch,
-            activation_fn=activation_fn,
-            ortho_init=ortho_init,
+            net_arch=net_arch
         ),
     }
+
+def make_supertennis_env():
+    env = make_retro(
+        game = "SuperTennis-Snes",
+        state= STARTING_STATE,
+        scenario = None,
+        render_mode = None
+    )
+    env = wrap_deepmind_retro(env)
+    return env
 
 
 class TrialEvalCallback(EvalCallback):
@@ -146,13 +148,24 @@ def objective(trial: optuna.Trial) -> float:
     env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env] * 8), n_stack=4))
     eval_env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env]), n_stack=4))
 
+    trial_path = os.path.join(STUDY_PATH, f"trial_{str(trial.number)}")
+    os.makedirs(trial_path, exist_ok = True)
+
     # Create the RL model.
-    model = PPO(env = env, **kwargs)
+    model = PPO(
+        env = env, 
+        verbose = 0, 
+        tensorboard_log = trial_path, 
+        **kwargs
+    )
 
     # Create the callback that will periodically evaluate and report the performance.
     eval_callback = TrialEvalCallback(
         eval_env, trial, n_eval_episodes=N_EVAL_EPISODES, eval_freq=EVAL_FREQ, deterministic=True
     )
+
+    with open(os.path.join(trial_path, "params.json"), "w") as f:
+        json.dump(kwargs, f, indent=4)
 
     nan_encountered = False
     try:
@@ -183,9 +196,14 @@ if __name__ == "__main__":
     # Do not prune before 1/3 of the max budget is used.
     pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3)
 
-    study = optuna.create_study(sampler=sampler, pruner=pruner, direction="maximize")
+    study = optuna.create_study(
+        study_name = "ppo_supertennis_tuning", 
+        sampler=sampler, 
+        pruner=pruner, 
+        direction="maximize",
+        load_if_exists = True)
     try:
-        study.optimize(objective, n_trials=N_TRIALS, timeout=600)
+        study.optimize(objective, n_trials=N_TRIALS, timeout=900)
     except KeyboardInterrupt:
         pass
 

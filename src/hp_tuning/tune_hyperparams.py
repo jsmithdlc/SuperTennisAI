@@ -134,7 +134,7 @@ def objective(trial: optuna.Trial) -> float:
         best_model_save_path = trial_path,
         log_path = trial_path,
         n_eval_episodes=N_EVAL_EPISODES, 
-        eval_freq=EVAL_FREQ, 
+        eval_freq=(EVAL_FREQ) // 8, 
         deterministic=True
     )
 

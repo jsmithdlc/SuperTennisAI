@@ -75,6 +75,15 @@ class StochasticFrameSkip(gym.Wrapper):
         return ob, totrew, terminated, truncated, info
 
 
+class TimePenaltyWrapper(gym.RewardWrapper):
+    def __init__(self, env, penalty_per_step=3e-3):
+        super(TimePenaltyWrapper, self).__init__(env)
+        self.penalty_per_step = penalty_per_step
+
+    def reward(self, reward):
+        return reward - self.penalty_per_step
+
+
 def make_retro(*, game, state=None, max_episode_steps=4500, **kwargs):
     if state is None:
         state = retro.State.DEFAULT
@@ -91,6 +100,7 @@ def wrap_deepmind_retro(env):
     Configure environment for retro games, using config similar to DeepMind-style Atari in openai/baseline's wrap_deepmind
     """
     env = WarpFrame(env)
+    env = TimePenaltyWrapper(env)
     env = ClipRewardEnv(env)
     return env
 
@@ -101,7 +111,7 @@ def main():
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
     scenario = None
-    initial_lr = 1e-4
+    initial_lr = 2.5e-4
     clip_range = 0.1
     ent_coef = 0.01
     batch_size = 128
@@ -118,10 +128,12 @@ def main():
         return env
 
     # create training and evaluation environments
-    venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env] * n_envs), n_stack=4))
+    venv = VecTransposeImage(
+        VecFrameStack(SubprocVecEnv([make_env] * n_envs), n_stack=4)
+    )
     eval_venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
 
-    logname = f"ppo_super_tennis_{datetime.now().strftime('%H_%M_%S__%d_%m_%Y')}"
+    logname = f"ppo_super_tennis_{datetime.now().strftime('%d_%m_%Y__%H_%M_%S')}"
 
     # evaluation callback
     eval_cb = EvalCallback(

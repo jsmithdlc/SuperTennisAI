@@ -28,12 +28,12 @@ from src.train_tennis_ppo import make_retro, wrap_deepmind_retro
 N_TRIALS = 100
 N_STARTUP_TRIALS = 5
 N_EVALUATIONS = 2
-N_TIMESTEPS = int(5e6)
+N_TIMESTEPS = int(1e6)
 STARTING_STATE = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
 STUDY_PATH = "./logs/optuna"
 EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
 N_EVAL_EPISODES = 3
-TIMEOUT_S = 60 * 60 * 12 # stop optuna study after this number of seconds
+TIMEOUT_S = 60 * 60 * 24 # stop optuna study after this number of seconds
 
 
 DEFAULT_HYPERPARAMS = {
@@ -47,19 +47,20 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     :param trial:
     :return:
     """
-    batch_size = trial.suggest_categorical("batch_size", [8, 16, 32, 64, 128, 256, 512])
-    n_steps = trial.suggest_categorical("n_steps", [8, 16, 32, 64, 128, 256, 512, 1024, 2048])
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512])
+    n_steps = trial.suggest_categorical("n_steps", [128, 256, 512, 1024, 2048])
     gamma = trial.suggest_categorical("gamma", [0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999])
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
-    ent_coef = trial.suggest_float("ent_coef", 0.00000001, 0.1, log=True)
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
+    ent_coef = trial.suggest_float("ent_coef", 0.00001, 0.1, log=True)
     clip_range = trial.suggest_categorical("clip_range", [0.1, 0.2, 0.3, 0.4])
     n_epochs = trial.suggest_categorical("n_epochs", [1, 5, 10, 20])
     gae_lambda = trial.suggest_categorical("gae_lambda", [0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0])
     max_grad_norm = trial.suggest_categorical("max_grad_norm", [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 5])
     vf_coef = trial.suggest_float("vf_coef", 0, 1)
-    net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
+    #net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
+    net_arch_type = "medium"
     # Orthogonal initialization
-    activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
+    # activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
     # lr_schedule = "constant"
     # Uncomment to enable learning rate schedule
     # lr_schedule = trial.suggest_categorical('lr_schedule', ['linear', 'constant'])

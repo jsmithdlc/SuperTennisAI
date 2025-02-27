@@ -16,19 +16,20 @@ import json
 from torch import nn
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
-from .optuna_utils import TrialEvalCallback
+from src.hp_tuning.optuna_utils import TrialEvalCallback
 from typing import Any
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage, SubprocVecEnv
 from stable_baselines3.ppo import PPO
-from src.train_tennis_ppo import make_retro, wrap_deepmind_retro
+from src.env_helpers import make_retro, wrap_deepmind_retro
 
 
 
 N_TRIALS = 100
 N_STARTUP_TRIALS = 5
-N_EVALUATIONS = 2
-N_TIMESTEPS = int(1e6)
+N_EVALUATIONS = 4
+N_TIMESTEPS = int(2e6)
+N_ENVS = 8
 STARTING_STATE = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
 STUDY_PATH = "./logs/optuna"
 EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
@@ -57,8 +58,8 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     gae_lambda = trial.suggest_categorical("gae_lambda", [0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0])
     max_grad_norm = trial.suggest_categorical("max_grad_norm", [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 5])
     vf_coef = trial.suggest_float("vf_coef", 0, 1)
-    #net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
-    net_arch_type = "medium"
+    net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
+    # net_arch_type = "medium"
     # Orthogonal initialization
     # activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
     # lr_schedule = "constant"
@@ -114,7 +115,7 @@ def objective(trial: optuna.Trial) -> float:
     kwargs.update(sample_ppo_params(trial))
 
     # create training and evaluation environments
-    env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env] * 8), n_stack=4))
+    env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env] * N_ENVS), n_stack=4))
     eval_env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env]), n_stack=4))
 
     trial_path = os.path.join(STUDY_PATH, f"trial_{str(trial.number)}")
@@ -135,7 +136,7 @@ def objective(trial: optuna.Trial) -> float:
         best_model_save_path = trial_path,
         log_path = trial_path,
         n_eval_episodes=N_EVAL_EPISODES, 
-        eval_freq=(EVAL_FREQ) // 8, 
+        eval_freq=(EVAL_FREQ) // N_ENVS, 
         deterministic=True
     )
 
@@ -162,7 +163,8 @@ def objective(trial: optuna.Trial) -> float:
         print(f"Trial: {str(trial.number)} pruned")
         raise optuna.exceptions.TrialPruned()
 
-    return eval_callback.last_mean_reward
+    # save the best reward achieved in this trial
+    return eval_callback.best_mean_reward
 
 if __name__ == "__main__":
     # Set pytorch num threads to 1 for faster training.

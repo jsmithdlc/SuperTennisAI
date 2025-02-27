@@ -10,29 +10,32 @@ from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecFrameStack,
     VecTransposeImage,
-    VecVideoRecorder
+    VecVideoRecorder,
 )
 from stable_baselines3.ppo import PPO
 
-from train_tennis_ppo import make_retro, wrap_deepmind_retro
+from src.env_helpers import make_retro, wrap_deepmind_retro
+
 
 def run_episode(model, env):
     episode_over = False
     obs = env.reset()
     while not episode_over:
-        action, _ = model.predict(obs)
+        action, _ = model.predict(obs, deterministic = True)
         obs, reward, terminated, info = env.step(action)
         episode_over = terminated
     env.close()
 
-def record_game(model, env:gymnasium.Env, video_path, video_length = 1000):
+
+def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
     # wrap around video recorder
     video_env = VecVideoRecorder(
-        env, 
-        video_path, 
-        record_video_trigger = lambda x: x== 0, 
-        video_length = video_length,
-        name_prefix=f"agent_ppo")
+        env,
+        video_path,
+        record_video_trigger=lambda x: x == 0,
+        video_length=video_length,
+        name_prefix=f"agent_ppo",
+    )
     run_episode(model, video_env)
 
 
@@ -41,8 +44,10 @@ def main():
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
     scenario = None
     render_mode = "rgb_array"
-    model_path = "./logs/checkpoints/ppo_super_tennis_00_06_06__21_02_2025/best_model"
-    video_path = os.path.join("./logs","videos",os.path.basename(os.path.dirname(model_path)))
+    model_path = "./logs/checkpoints/ppo_super_tennis_27_02_2025__10_57_03/best_model"
+    video_path = os.path.join(
+        "./logs", "videos", os.path.basename(os.path.dirname(model_path))
+    )
 
     def make_env():
         env = make_retro(

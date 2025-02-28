@@ -25,18 +25,38 @@ from stable_baselines3.common.vec_env import (
 
 from src.env_helpers import make_retro, wrap_deepmind_retro
 
+def create_policy_params():
+    params = {
+        "initial_lr":2e-4,
+        "clip_range":0.1,
+        "ent_coef":1.4e-5,
+        "batch_size":256,
+        "gamma":0.999,
+        "gae_lambda":0.95,
+        "max_grad_norm":2,
+        "vf_coef":0.6,
+        "n_epochs":10,
+        "n_steps":1024,
+        "policy_kwargs":{
+        "net_arch":{
+            "pi": [
+                64
+            ],
+            "vf": [
+                64
+            ]
+            }
+        }
+    }
+    return params
+
+
 def main():
 
     render_mode = None
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
     scenario = None
-    initial_lr = 2.5e-4
-    clip_range = 0.2
-    ent_coef = 0.01
-    batch_size = 128
-    gamma = 0.995
-    gae_lambda = 0.95
     log_tensorboard = False
     n_envs = 8
 
@@ -66,37 +86,24 @@ def main():
         n_eval_episodes=2,
     )
 
+    params = create_policy_params()
+    print("Hyperparameters:")
+    pprint.pprint(params)
+    print("\n")
+    initial_lr = params.pop("initial_lr")
     model = PPO(
         policy="CnnPolicy",
         tensorboard_log="./logs/tensorboard/",
         env=venv,
         learning_rate=lambda f: f * initial_lr,
-        n_steps=128,
-        batch_size=batch_size,
-        n_epochs=4,
-        gamma=gamma,
-        gae_lambda=gae_lambda,
-        clip_range=clip_range,
-        ent_coef=ent_coef,
         verbose=1,
+        **params
     )
-    print("Hyperparameters set to:")
-    pprint.pprint(
-        {
-            "initial_lr": initial_lr,
-            "batch_size": batch_size,
-            "gamma": gamma,
-            "clip_range": clip_range,
-            "ent_coef": ent_coef,
-            "gae_lambda": gae_lambda,
-        }
-    )
-    print("\n")
     model.learn(
-        total_timesteps=10_000_000,
+        total_timesteps=50_000_000,
         callback=eval_cb,
         tb_log_name=logname,
-        log_interval=10,
+        log_interval=1,
     )
     model.save(os.path.join("./logs", "checkpoints", logname, "last_model"))
 

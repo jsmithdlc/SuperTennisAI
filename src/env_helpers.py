@@ -1,6 +1,6 @@
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
-from wrappers import StochasticFrameSkip
+from src.wrappers import StochasticFrameSkip
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
 from stable_baselines3.common.monitor import Monitor
 

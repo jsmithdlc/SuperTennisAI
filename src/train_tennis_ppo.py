@@ -50,12 +50,44 @@ def create_policy_params():
     }
     return params
 
+def create_logname(saved_model_path, continue_training):
+    if saved_model_path is not None and continue_training:
+        return os.path.basename(os.path.dirname(saved_model_path))
+    return f"ppo_super_tennis_{datetime.now().strftime('%d_%m_%Y__%H_%M_%S')}"
+
+def initialize_model(env):
+    params = create_policy_params()
+    print("Initialized model with hyperparameters:")
+    pprint.pprint(params)
+    print("\n")
+    initial_lr = params.pop("initial_lr")
+    model = PPO(
+        policy="CnnPolicy",
+        tensorboard_log="./logs/tensorboard/",
+        env=env,
+        learning_rate=lambda f: f * initial_lr,
+        verbose=1,
+        **params
+    )
+    return model
+
+def load_saved_model(env, model_path):
+    print(f"Load saved model from path: {model_path}")
+    model = PPO.load(model_path,tensorboard_log="./logs/tensorboard/")
+    model.set_env(env)
+    return model
+
+
 
 def main():
 
     render_mode = None
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
+    
+    continue_training = False
+    saved_model_path = "./logs/checkpoints/ppo_super_tennis_28_02_2025__18_53_11/best_model.zip"
+
     scenario = None
     log_tensorboard = False
     n_envs = 8
@@ -73,7 +105,7 @@ def main():
     )
     eval_venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
 
-    logname = f"ppo_super_tennis_{datetime.now().strftime('%d_%m_%Y__%H_%M_%S')}"
+    logname = create_logname(saved_model_path, continue_training)
 
     # evaluation callback
     eval_cb = EvalCallback(
@@ -86,24 +118,17 @@ def main():
         n_eval_episodes=2,
     )
 
-    params = create_policy_params()
-    print("Hyperparameters:")
-    pprint.pprint(params)
-    print("\n")
-    initial_lr = params.pop("initial_lr")
-    model = PPO(
-        policy="CnnPolicy",
-        tensorboard_log="./logs/tensorboard/",
-        env=venv,
-        learning_rate=lambda f: f * initial_lr,
-        verbose=1,
-        **params
-    )
+    if saved_model_path is not None:
+        model = load_saved_model(venv, saved_model_path)
+    else:
+        model = initialize_model(venv)
+    
     model.learn(
         total_timesteps=50_000_000,
         callback=eval_cb,
         tb_log_name=logname,
         log_interval=1,
+        reset_num_timesteps = False if continue_training else True
     )
     model.save(os.path.join("./logs", "checkpoints", logname, "last_model"))
 

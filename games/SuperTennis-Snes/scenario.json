@@ -17,6 +17,9 @@
     "variables": {
       "player_points": {
         "reward": 1.0
+      },
+      "opponent_points": {
+        "reward": -1.0
       }
     }
   }

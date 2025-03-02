@@ -85,7 +85,7 @@ def main():
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
     
     continue_training = False
-    saved_model_path = None
+    saved_model_path = "logs/checkpoints/ppo_super_tennis_28_02_2025__18_53_11/best_model.zip"
 
     scenario = None
     log_tensorboard = False

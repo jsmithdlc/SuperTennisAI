@@ -46,7 +46,7 @@ def main():
     state = "SuperTennis.Singles.1pvscom.MattvsJohn.1-Set.Hard.state"
     scenario = None
     render_mode = "rgb_array"
-    model_path = "./logs/checkpoints/ppo_super_tennis_01_03_2025__20_24_54/best_model"
+    model_path = "./logs/checkpoints/ppo_super_tennis_02_03_2025__16_59_07/best_model"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

@@ -58,20 +58,23 @@ class TimePenaltyWrapper(gym.RewardWrapper):
         return reward - self.penalty_per_step
 
 class StallPenaltyWrapper(gym.RewardWrapper):
-    def __init__(self, env, base_penalty=1, seconds_till_penalty = 6):
+    def __init__(self, env, penalty=5, seconds_till_penalty = 10):
         super(StallPenaltyWrapper, self).__init__(env)
-        self.last_change_time = None
+        self.last_time = None
         self.last_reward = None
         self.seconds_till_penalty = seconds_till_penalty
-        self.base_penalty = base_penalty
+        self.penalty= penalty
         
 
     def reward(self, reward):
         cur_time = time.time()
         if self.last_reward != reward:
             self.last_reward = reward
-            self.last_change_time = cur_time
+            self.last_time = cur_time
             return reward
-        
-        factor = (cur_time - self.last_change_time) // self.seconds_till_penalty
-        return reward - self.base_penalty * factor
+
+        timedelta = cur_time - self.last_time
+        if timedelta >= self.seconds_till_penalty:
+            self.last_time = cur_time
+            return reward - self.penalty
+        return reward

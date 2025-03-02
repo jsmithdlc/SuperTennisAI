@@ -31,7 +31,7 @@ N_EVALUATIONS = 4
 N_TIMESTEPS = int(2e6)
 N_ENVS = 8
 STARTING_STATE = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
-STUDY_PATH = "./logs/optuna"
+LOGS_PATH = "./logs/optuna"
 EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
 N_EVAL_EPISODES = 3
 TIMEOUT_S = 60 * 60 * 24 # stop optuna study after this number of seconds
@@ -118,7 +118,8 @@ def objective(trial: optuna.Trial) -> float:
     env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env] * N_ENVS), n_stack=4))
     eval_env = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_supertennis_env]), n_stack=4))
 
-    trial_path = os.path.join(STUDY_PATH, f"trial_{str(trial.number)}")
+
+    trial_path = os.path.join(LOGS_PATH, trial.study.study_name, f"trial_{str(trial.number)}")
     os.makedirs(trial_path, exist_ok = True)
 
     # Create the RL model.

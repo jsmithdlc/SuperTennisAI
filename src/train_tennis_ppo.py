@@ -80,13 +80,12 @@ def load_saved_model(env, model_path):
 
 
 def main():
-
     render_mode = None
     game = "SuperTennis-Snes"
-    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
+    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
     
     continue_training = False
-    saved_model_path = "./logs/checkpoints/ppo_super_tennis_28_02_2025__18_53_11/best_model.zip"
+    saved_model_path = None
 
     scenario = None
     log_tensorboard = False

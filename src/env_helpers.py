@@ -1,6 +1,6 @@
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
-from src.wrappers import StochasticFrameSkip
+from src.wrappers import StochasticFrameSkip, StallPenaltyWrapper
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
 from stable_baselines3.common.monitor import Monitor
 
@@ -20,5 +20,6 @@ def wrap_deepmind_retro(env):
     Configure environment for retro games, using config similar to DeepMind-style Atari in openai/baseline's wrap_deepmind
     """
     env = WarpFrame(env)
+    env = StallPenaltyWrapper(env)
     env = ClipRewardEnv(env)
     return env

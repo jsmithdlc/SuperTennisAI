@@ -43,10 +43,10 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    state = "SuperTennis.Singles.1pvscom.MattvsJohn.1-Set.Hard.state"
+    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
     scenario = None
     render_mode = "rgb_array"
-    model_path = "./logs/checkpoints/ppo_super_tennis_02_03_2025__16_59_07/best_model"
+    model_path = "./logs/checkpoints/ppo_super_tennis_02_03_2025__17_58_04/best_model"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

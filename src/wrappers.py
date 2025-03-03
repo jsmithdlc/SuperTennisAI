@@ -1,11 +1,14 @@
+import pprint
+import time
+
 import gymnasium as gym
 import numpy as np
-import time
+
 
 class StochasticFrameSkip(gym.Wrapper):
     """
-    Stores most previous action and use it over environment only updating it in each step
-    based on outcome of stickprob trial. Sort of like StickyAction Wrapper combined with frameskip
+    Skips n frames and applies a sticky action policy, repeating the action with a given probability
+    Sort of like StickyAction Wrapper combined with frameskip
 
     Read: https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/
     """
@@ -49,32 +52,64 @@ class StochasticFrameSkip(gym.Wrapper):
                 break
         return ob, totrew, terminated, truncated, info
 
-class TimePenaltyWrapper(gym.RewardWrapper):
-    def __init__(self, env, penalty_per_step=3e-3):
-        super(TimePenaltyWrapper, self).__init__(env)
-        self.penalty_per_step = penalty_per_step
 
-    def reward(self, reward):
-        return reward - self.penalty_per_step
+# TODO: implement this directly into the reward function of the environment as a lua script
+class StallPenaltyWrapper(gym.Wrapper):
+    """
+    Wrapper uses variable 'player_serving' from game data. This variable takes
+    many values, depending on the racket action taken by the player.
 
-class StallPenaltyWrapper(gym.RewardWrapper):
-    def __init__(self, env, penalty=5, seconds_till_penalty = 10):
+    It was observed that it is always == 1 when player has to serve and has ball
+    in hand
+
+    IMPORTANT: note that the time to wait until penalty takes into account
+    a time that is spent showing the current score and where the variable is
+    also 1.
+
+    It was observed that 50 env steps ~ 3 seconds of normal game speed
+    """
+
+    def __init__(self, env, penalty=1, steps_till_penalty=80, skipped_frames=4):
         super(StallPenaltyWrapper, self).__init__(env)
-        self.last_time = None
-        self.last_reward = None
-        self.seconds_till_penalty = seconds_till_penalty
-        self.penalty= penalty
-        
+        self.is_serving_varname = "player_serving"
+        self.penalty = penalty
+        # adds 200 base steps to account for score showing
+        # must divide by skipped frames to get back to real time
+        self.steps_till_penalty = (steps_till_penalty + 200) // skipped_frames
+        self.in_serving_state = False
+        self.step_counter = 0
 
-    def reward(self, reward):
-        cur_time = time.time()
-        if self.last_reward != reward:
-            self.last_reward = reward
-            self.last_time = cur_time
-            return reward
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        return (
+            observation,
+            self.reward(reward, info[self.is_serving_varname]),
+            terminated,
+            truncated,
+            info,
+        )
 
-        timedelta = cur_time - self.last_time
-        if timedelta >= self.seconds_till_penalty:
-            self.last_time = cur_time
-            return reward - self.penalty
+    def reward(self, reward: float, is_serving) -> float:
+        """reward modification function
+
+        Args:
+            reward (float): reward as given by original environment
+            is_serving (bool): variable that indicates if player is serving when == 1
+
+        Returns:
+            float: reward with penalization if player has spent more time than
+                necessary serving.
+        """
+        if is_serving == 1 and not self.in_serving_state:
+            self.step_counter = 0
+            self.in_serving_state = True
+        elif is_serving == 1 and self.in_serving_state:
+            print(self.step_counter)
+            self.step_counter += 1
+            if self.step_counter >= self.steps_till_penalty:
+                self.step_counter = 0
+                print("Penalizing agent for stalling")
+                return reward - self.penalty
+        else:
+            self.in_serving_state = False
         return reward

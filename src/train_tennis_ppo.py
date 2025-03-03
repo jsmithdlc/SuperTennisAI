@@ -25,35 +25,29 @@ from stable_baselines3.common.vec_env import (
 
 from src.env_helpers import make_retro, wrap_deepmind_retro
 
+
 def create_policy_params():
     params = {
-        "initial_lr":2e-4,
-        "clip_range":0.1,
-        "ent_coef":1.4e-5,
-        "batch_size":256,
-        "gamma":0.999,
-        "gae_lambda":0.95,
-        "max_grad_norm":2,
-        "vf_coef":0.6,
-        "n_epochs":10,
-        "n_steps":1024,
-        "policy_kwargs":{
-        "net_arch":{
-            "pi": [
-                64
-            ],
-            "vf": [
-                64
-            ]
-            }
-        }
+        "initial_lr": 2e-4,
+        "clip_range": 0.1,
+        "ent_coef": 1.4e-5,
+        "batch_size": 256,
+        "gamma": 0.999,
+        "gae_lambda": 0.95,
+        "max_grad_norm": 2,
+        "vf_coef": 0.6,
+        "n_epochs": 10,
+        "n_steps": 1024,
+        "policy_kwargs": {"net_arch": {"pi": [64], "vf": [64]}},
     }
     return params
+
 
 def create_logname(saved_model_path, continue_training):
     if saved_model_path is not None and continue_training:
         return os.path.basename(os.path.dirname(saved_model_path))
     return f"ppo_super_tennis_{datetime.now().strftime('%d_%m_%Y__%H_%M_%S')}"
+
 
 def initialize_model(env):
     params = create_policy_params()
@@ -67,28 +61,27 @@ def initialize_model(env):
         env=env,
         learning_rate=lambda f: f * initial_lr,
         verbose=1,
-        **params
+        **params,
     )
     return model
 
+
 def load_saved_model(env, model_path):
     print(f"Load saved model from path: {model_path}")
-    model = PPO.load(model_path,tensorboard_log="./logs/tensorboard/")
+    model = PPO.load(model_path, tensorboard_log="./logs/tensorboard/")
     model.set_env(env)
     return model
 
 
-
 def main():
-    render_mode = None
+    render_mode = "human"
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
-    
+
     continue_training = False
-    saved_model_path = "logs/checkpoints/ppo_super_tennis_28_02_2025__18_53_11/best_model.zip"
+    saved_model_path = None
 
     scenario = None
-    log_tensorboard = False
     n_envs = 8
 
     def make_env():
@@ -121,13 +114,13 @@ def main():
         model = load_saved_model(venv, saved_model_path)
     else:
         model = initialize_model(venv)
-    
+
     model.learn(
         total_timesteps=50_000_000,
         callback=eval_cb,
         tb_log_name=logname,
         log_interval=1,
-        reset_num_timesteps = False if continue_training else True
+        reset_num_timesteps=False if continue_training else True,
     )
     model.save(os.path.join("./logs", "checkpoints", logname, "last_model"))
 

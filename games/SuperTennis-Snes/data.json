@@ -1,5 +1,13 @@
 {
   "info": {
+    "aces": {
+      "address": 421,
+      "type": "<d2"
+    },
+    "player_serving": {
+      "address": 2048,
+      "type": "|u1"
+    },
     "opponent_points": {
       "address": 407,
       "type": "<d2"

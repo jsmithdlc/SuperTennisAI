@@ -73,11 +73,12 @@ class StallPenaltyWrapper(gym.Wrapper):
         super(StallPenaltyWrapper, self).__init__(env)
         self.is_serving_varname = "player_serving"
         self.penalty = penalty
-        # adds 200 base steps to account for score showing
         # must divide by skipped frames to get back to real time
-        self.steps_till_penalty = (steps_till_penalty + 200) // skipped_frames
+        self.steps_till_penalty = (steps_till_penalty) // skipped_frames
+        # 200 base steps must be burned to account for score showing
+        self.base_steps = -200 // skipped_frames
         self.in_serving_state = False
-        self.step_counter = 0
+        self.step_counter = self.base_steps
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
@@ -101,12 +102,12 @@ class StallPenaltyWrapper(gym.Wrapper):
                 necessary serving.
         """
         if is_serving == 1 and not self.in_serving_state:
-            self.step_counter = 0
+            self.step_counter = self.base_steps
             self.in_serving_state = True
         elif is_serving == 1 and self.in_serving_state:
             self.step_counter += 1
             if self.step_counter >= self.steps_till_penalty:
-                self.step_counter = 0
+                self.step_counter = 0  # we reset to 0 since game is already in motion
                 print("Penalizing agent for stalling")
                 return reward - self.penalty
         else:

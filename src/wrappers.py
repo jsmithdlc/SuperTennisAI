@@ -59,8 +59,8 @@ class StallPenaltyWrapper(gym.Wrapper):
     Wrapper uses variable 'player_serving' from game data. This variable takes
     many values, depending on the racket action taken by the player.
 
-    It was observed that it is always == 1 when player has to serve and has ball
-    in hand
+    It was observed that it is always 1 when player has ball in hand and 17 when
+    bouncing it
 
     IMPORTANT: note that the time to wait until penalty takes into account
     a time that is spent showing the current score and where the variable is
@@ -68,6 +68,8 @@ class StallPenaltyWrapper(gym.Wrapper):
 
     It was observed that 50 env steps ~ 3 seconds of normal game speed
     """
+
+    stalling_values = {1, 17}
 
     def __init__(self, env, penalty=1, steps_till_penalty=80, skipped_frames=4):
         super(StallPenaltyWrapper, self).__init__(env)
@@ -101,10 +103,10 @@ class StallPenaltyWrapper(gym.Wrapper):
             float: reward with penalization if player has spent more time than
                 necessary serving.
         """
-        if is_serving == 1 and not self.in_serving_state:
+        if is_serving in self.stalling_values and not self.in_serving_state:
             self.step_counter = self.base_steps
             self.in_serving_state = True
-        elif is_serving == 1 and self.in_serving_state:
+        elif is_serving in self.stalling_values and self.in_serving_state:
             self.step_counter += 1
             if self.step_counter >= self.steps_till_penalty:
                 self.step_counter = 0  # we reset to 0 since game is already in motion

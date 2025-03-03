@@ -19,11 +19,12 @@ from src.env_helpers import make_retro, wrap_deepmind_retro
 MAX_EPISODE_STEPS = 4500
 VIDEO_LENGTH = 4500
 
+
 def run_episode(model, env):
     episode_over = False
     obs = env.reset()
     while not episode_over:
-        action, _ = model.predict(obs, deterministic = True)
+        action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, info = env.step(action)
         episode_over = terminated
     env.close()
@@ -45,15 +46,19 @@ def main():
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
     scenario = None
-    render_mode = "rgb_array"
-    model_path = "./logs/checkpoints/ppo_super_tennis_02_03_2025__17_58_04/best_model"
+    render_mode = "human"
+    model_path = "./logs/checkpoints/ppo_super_tennis_03_03_2025__13_18_55/best_model"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )
 
     def make_env():
         env = make_retro(
-            game=game, state=state, scenario=scenario, render_mode=render_mode, max_episode_steps=MAX_EPISODE_STEPS
+            game=game,
+            state=state,
+            scenario=scenario,
+            render_mode=render_mode,
+            max_episode_steps=MAX_EPISODE_STEPS,
         )
         env = wrap_deepmind_retro(env)
         return env
@@ -61,7 +66,7 @@ def main():
     venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
     model = PPO.load(path=model_path, env=venv)
     if render_mode == "rgb_array":
-        record_game(model, venv, video_path, video_length = VIDEO_LENGTH)
+        record_game(model, venv, video_path, video_length=VIDEO_LENGTH)
     else:
         run_episode(model, venv)
 

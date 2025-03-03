@@ -104,7 +104,6 @@ class StallPenaltyWrapper(gym.Wrapper):
             self.step_counter = 0
             self.in_serving_state = True
         elif is_serving == 1 and self.in_serving_state:
-            print(self.step_counter)
             self.step_counter += 1
             if self.step_counter >= self.steps_till_penalty:
                 self.step_counter = 0

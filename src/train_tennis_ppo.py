@@ -74,7 +74,7 @@ def load_saved_model(env, model_path):
 
 
 def main():
-    render_mode = "human"
+    render_mode = None
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
 

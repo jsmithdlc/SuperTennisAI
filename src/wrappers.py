@@ -115,3 +115,42 @@ class StallPenaltyWrapper(gym.Wrapper):
         else:
             self.in_serving_state = False
         return reward
+
+
+class FaultPenaltyWrapper(gym.Wrapper):
+    """
+    Wrapper uses variable 'in_fault' from game data, which indicates if player
+    is at fault while serving, to penalize agent for doing faults.
+    """
+
+    def __init__(self, env):
+        super(FaultPenaltyWrapper, self).__init__(env)
+        self.in_fault_varname = "in_fault"
+        self.prev_in_fault = False
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        return (
+            observation,
+            self.reward(reward, info[self.in_fault_varname]),
+            terminated,
+            truncated,
+            info,
+        )
+
+    def reward(self, reward, in_fault):
+        """reward modification function
+
+        Args:
+            reward (float): reward as given by original environment
+            is_serving (bool): variable that indicates if player is at fault when == 1
+
+        Returns:
+            float: reward with penalization if player has entered fault state
+        """
+        if in_fault == 1 and not self.prev_in_fault:
+            print("Penalizing agent for comitting fault")
+            self.prev_in_fault = bool(in_fault)
+            return reward - 1
+        self.prev_in_fault = bool(in_fault)
+        return reward

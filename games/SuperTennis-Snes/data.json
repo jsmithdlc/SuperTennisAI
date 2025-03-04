@@ -19,6 +19,10 @@
     "total_sets": {
       "address": 342,
       "type": "|u1"
+    },
+    "in_fault": {
+      "address": 288,
+      "type": "|u1"
     }
   }
 }

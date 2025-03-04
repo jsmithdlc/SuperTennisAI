@@ -3,7 +3,7 @@ from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
 from stable_baselines3.common.monitor import Monitor
 
-from src.wrappers import StallPenaltyWrapper, StochasticFrameSkip
+from src.wrappers import FaultPenaltyWrapper, StallPenaltyWrapper, StochasticFrameSkip
 
 N_SKIPPED_FRAMES = 4
 
@@ -25,5 +25,6 @@ def wrap_deepmind_retro(env):
     """
     env = WarpFrame(env)
     env = StallPenaltyWrapper(env, skipped_frames=N_SKIPPED_FRAMES)
+    env = FaultPenaltyWrapper(env)
     env = ClipRewardEnv(env)
     return env

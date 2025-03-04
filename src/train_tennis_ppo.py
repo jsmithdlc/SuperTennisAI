@@ -16,7 +16,7 @@ import pprint
 from datetime import datetime
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecFrameStack,
@@ -29,8 +29,8 @@ from src.env_helpers import make_retro, wrap_deepmind_retro
 def create_policy_params():
     params = {
         "initial_lr": 2e-4,
-        "clip_range": 0.1,
-        "ent_coef": 1.4e-5,
+        "clip_range": 0.2,
+        "ent_coef": 0.001,
         "batch_size": 256,
         "gamma": 0.999,
         "gae_lambda": 0.95,
@@ -38,7 +38,6 @@ def create_policy_params():
         "vf_coef": 0.6,
         "n_epochs": 10,
         "n_steps": 1024,
-        "policy_kwargs": {"net_arch": {"pi": [64], "vf": [64]}},
     }
     return params
 
@@ -81,6 +80,7 @@ def main():
     continue_training = False
     saved_model_path = None
 
+    save_freq = 1e6
     scenario = None
     n_envs = 8
 
@@ -109,6 +109,11 @@ def main():
         eval_freq=1_000_000 // n_envs,
         n_eval_episodes=2,
     )
+    ckpt_callback = CheckpointCallback(
+        save_freq=save_freq // n_envs,
+        save_path=os.path.join("./logs", "checkpoints", logname),
+        name_prefix="ppo_supertennis",
+    )
 
     if saved_model_path is not None:
         model = load_saved_model(venv, saved_model_path)
@@ -117,7 +122,7 @@ def main():
 
     model.learn(
         total_timesteps=50_000_000,
-        callback=eval_cb,
+        callback=[eval_cb, ckpt_callback],
         tb_log_name=logname,
         log_interval=1,
         reset_num_timesteps=False if continue_training else True,

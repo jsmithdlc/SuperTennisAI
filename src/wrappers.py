@@ -1,8 +1,10 @@
 import pprint
+import random
 import time
 
 import gymnasium as gym
 import numpy as np
+from stable_baselines3.common.type_aliases import AtariResetReturn, AtariStepReturn
 
 
 class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
@@ -11,16 +13,41 @@ class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
         self.action_repeat_probability = action_repeat_probability
         self._sticky_action = None
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs) -> AtariResetReturn:
         self._sticky_action = None  # NOOP
         return self.env.reset(**kwargs)
 
-    def step(self, action: int):
+    def step(self, action: int) -> AtariStepReturn:
         if self._sticky_action is None:
             self._sticky_action = action
         elif self.np_random.random() >= self.action_repeat_probability:
             self._sticky_action = action
         return self.env.step(self._sticky_action)
+
+
+class StochasticFrameSkip(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
+    def __init__(self, env: gym.Env, n_skip: int = 4) -> None:
+        super().__init__(env)
+        self.n_skip = n_skip
+
+    def step(self, action: int) -> AtariStepReturn:
+        """Performs same action over [2-n_skip] frames (number chosen at random)
+
+        Args:
+            action (int): action to repeat over any (2,...,n_skip) frames
+
+        Returns:
+            AtariStepReturn: environment state and reward after frame skipping
+        """
+        total_reward = 0.0
+        n_skipped = random.randint(2, self.n_skip)
+        for _ in range(n_skipped):
+            obs, reward, terminated, truncated, info = self.env.step(action)
+            done = terminated or truncated
+            total_reward += float(reward)
+            if done:
+                break
+        return obs, total_reward, terminated, truncated, info
 
 
 # TODO: implement this directly into the reward function of the environment as a lua script

@@ -23,21 +23,22 @@ from stable_baselines3.common.vec_env import (
     VecTransposeImage,
 )
 
+from src.callbacks import HParamCallback
 from src.env_helpers import make_retro, wrap_deepmind_retro
 
 
 def create_policy_params():
     params = {
         "initial_lr": 2.5e-4,
-        "clip_range": 0.2,
-        "ent_coef": 0.001,
-        "batch_size": 256,
-        "gamma": 0.999,
+        "clip_range": 0.1,
+        "ent_coef": 0.01,
+        "batch_size": 512,
+        "gamma": 0.96,
         "gae_lambda": 0.95,
-        "max_grad_norm": 2,
-        "vf_coef": 0.6,
-        "n_epochs": 10,
-        "n_steps": 1024,
+        "max_grad_norm": 0.5,
+        "vf_coef": 0.5,
+        "n_epochs": 4,
+        "n_steps": 256,
     }
     return params
 
@@ -50,7 +51,9 @@ def create_logname(saved_model_path, continue_training):
 
 def initialize_model(env):
     params = create_policy_params()
-    print("Model initialized with default hyperparameters")
+    print("Hyperparameters:")
+    pprint.pprint(params)
+    print("\n")
     initial_lr = params.pop("initial_lr")
     model = PPO(
         policy="CnnPolicy",
@@ -58,6 +61,7 @@ def initialize_model(env):
         env=env,
         learning_rate=lambda f: f * initial_lr,
         verbose=1,
+        **params,
     )
     return model
 
@@ -78,10 +82,11 @@ def main():
     saved_model_path = None
 
     save_freq = 1e6
+    eval_freq = 1e6
     scenario = None
     n_envs = 8
-    total_timesteps = 10_000_000
-    max_episode_steps = None
+    total_timesteps = 100_000_000
+    max_episode_steps = 5e4
 
     def make_env():
         env = make_retro(
@@ -109,7 +114,7 @@ def main():
         log_path=os.path.join("./logs", "eval_metrics", logname),
         render=False,
         deterministic=True,
-        eval_freq=1_000_000 // n_envs,
+        eval_freq=eval_freq // n_envs,
         n_eval_episodes=2,
     )
     ckpt_callback = CheckpointCallback(
@@ -125,7 +130,7 @@ def main():
 
     model.learn(
         total_timesteps=total_timesteps,
-        callback=[eval_cb, ckpt_callback],
+        callback=[eval_cb, ckpt_callback, HParamCallback()],
         tb_log_name=logname,
         log_interval=1,
         reset_num_timesteps=False if continue_training else True,

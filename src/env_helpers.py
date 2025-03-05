@@ -1,9 +1,13 @@
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
-from stable_baselines3.common.atari_wrappers import AtariWrapper
+from stable_baselines3.common.atari_wrappers import (
+    ClipRewardEnv,
+    MaxAndSkipEnv,
+    WarpFrame,
+)
 from stable_baselines3.common.monitor import Monitor
 
-from src.wrappers import FaultPenaltyWrapper, StallPenaltyWrapper
+from src.wrappers import FaultPenaltyWrapper, StallPenaltyWrapper, StickyActionWrapper
 
 N_SKIPPED_FRAMES = 4
 STICK_PROB = 0.25
@@ -23,13 +27,10 @@ def wrap_deepmind_retro(env):
     """
     Configure environment for retro games, using config similar to DeepMind-style Atari in openai/baseline's wrap_deepmind
     """
+    env = StickyActionWrapper(env, STICK_PROB)
+    env = MaxAndSkipEnv(env, skip=N_SKIPPED_FRAMES)
+    env = WarpFrame(env)
     env = StallPenaltyWrapper(env, skipped_frames=N_SKIPPED_FRAMES)
     env = FaultPenaltyWrapper(env)
-    env = AtariWrapper(
-        env,
-        frame_skip=N_SKIPPED_FRAMES,
-        clip_reward=True,
-        action_repeat_probability=STICK_PROB,
-        terminal_on_life_loss=False,
-    )
+    env = ClipRewardEnv(env)
     return env

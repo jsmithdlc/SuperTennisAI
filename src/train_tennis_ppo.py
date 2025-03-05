@@ -80,10 +80,16 @@ def main():
     save_freq = 1e6
     scenario = None
     n_envs = 8
+    total_timesteps = 10_000_000
+    max_episode_steps = None
 
     def make_env():
         env = make_retro(
-            game=game, state=state, scenario=scenario, render_mode=render_mode
+            game=game,
+            state=state,
+            scenario=scenario,
+            render_mode=render_mode,
+            max_episode_steps=max_episode_steps,
         )
         env = wrap_deepmind_retro(env)
         return env
@@ -118,7 +124,7 @@ def main():
         model = initialize_model(venv)
 
     model.learn(
-        total_timesteps=50_000_000,
+        total_timesteps=total_timesteps,
         callback=[eval_cb, ckpt_callback],
         tb_log_name=logname,
         log_interval=1,

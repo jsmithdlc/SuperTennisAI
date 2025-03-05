@@ -28,7 +28,7 @@ from src.env_helpers import make_retro, wrap_deepmind_retro
 
 def create_policy_params():
     params = {
-        "initial_lr": 2e-4,
+        "initial_lr": 2.5e-4,
         "clip_range": 0.2,
         "ent_coef": 0.001,
         "batch_size": 256,
@@ -50,9 +50,7 @@ def create_logname(saved_model_path, continue_training):
 
 def initialize_model(env):
     params = create_policy_params()
-    print("Initialized model with hyperparameters:")
-    pprint.pprint(params)
-    print("\n")
+    print("Model initialized with default hyperparameters")
     initial_lr = params.pop("initial_lr")
     model = PPO(
         policy="CnnPolicy",
@@ -60,7 +58,6 @@ def initialize_model(env):
         env=env,
         learning_rate=lambda f: f * initial_lr,
         verbose=1,
-        **params,
     )
     return model
 

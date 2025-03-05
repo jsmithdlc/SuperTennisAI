@@ -16,7 +16,7 @@ from stable_baselines3.ppo import PPO
 
 from src.env_helpers import make_retro, wrap_deepmind_retro
 
-MAX_EPISODE_STEPS = 4500
+MAX_EPISODE_STEPS = 8000
 VIDEO_LENGTH = 4500
 
 
@@ -47,7 +47,7 @@ def main():
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
     scenario = None
     render_mode = "human"
-    model_path = "./logs/checkpoints/ppo_super_tennis_03_03_2025__16_24_00/best_model"
+    model_path = "./logs/checkpoints/ppo_super_tennis_04_03_2025__10_00_54/ppo_supertennis_8000000_steps.zip"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

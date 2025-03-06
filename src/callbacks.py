@@ -11,8 +11,14 @@ class HParamCallback(BaseCallback):
     def _on_training_start(self) -> None:
         hparam_dict = {
             "algorithm": self.model.__class__.__name__,
-            "learning rate": self.model.learning_rate,
             "gamma": self.model.gamma,
+            "ent_coef": self.model.ent_coef,
+            "batch_size": self.model.batch_size,
+            "gae_lambda": self.model.gae_lambda,
+            "max_grad_norm": self.model.max_grad_norm,
+            "vf_coef": self.model.vf_coef,
+            "n_epochs": self.model.n_epochs,
+            "n_steps": self.model.n_steps,
         }
         # define the metrics that will appear in the `HPARAMS` Tensorboard tab by referencing their tag
         # Tensorboard will find & display metrics from the `SCALARS` tab

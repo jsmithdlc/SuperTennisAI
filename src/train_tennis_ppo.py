@@ -31,14 +31,14 @@ def create_policy_params():
     params = {
         "initial_lr": 2.5e-4,
         "clip_range": 0.1,
-        "ent_coef": 0.01,
-        "batch_size": 512,
-        "gamma": 0.96,
+        "ent_coef": 0.005,
+        "batch_size": 1024,
+        "gamma": 0.99,
         "gae_lambda": 0.95,
         "max_grad_norm": 0.5,
         "vf_coef": 0.5,
         "n_epochs": 4,
-        "n_steps": 256,
+        "n_steps": 512,
     }
     return params
 
@@ -85,7 +85,7 @@ def main():
     eval_freq = 1e6
     scenario = None
     n_envs = 8
-    total_timesteps = 100_000_000
+    total_timesteps = 50_000_000
     max_episode_steps = 5e4
 
     def make_env():

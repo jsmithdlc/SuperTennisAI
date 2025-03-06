@@ -25,23 +25,22 @@ class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
         return self.env.step(self._sticky_action)
 
 
-class StochasticFrameSkip(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
+class FrameSkip(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
     def __init__(self, env: gym.Env, n_skip: int = 4) -> None:
         super().__init__(env)
         self.n_skip = n_skip
 
     def step(self, action: int) -> AtariStepReturn:
-        """Performs same action over [2-n_skip] frames (number chosen at random)
+        """Performs same action over n_skip frames
 
         Args:
-            action (int): action to repeat over any (2,...,n_skip) frames
+            action (int): action to repeat over n_skip frames
 
         Returns:
             AtariStepReturn: environment state and reward after frame skipping
         """
         total_reward = 0.0
-        n_skipped = random.randint(2, self.n_skip)
-        for _ in range(n_skipped):
+        for _ in range(self.n_skip):
             obs, reward, terminated, truncated, info = self.env.step(action)
             done = terminated or truncated
             total_reward += float(reward)

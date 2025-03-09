@@ -78,14 +78,14 @@ def main():
     game = "SuperTennis-Snes"
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
 
-    continue_training = False
-    saved_model_path = None
+    continue_training = True
+    saved_model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_100000000_steps_last_second_run.zip"
 
     save_freq = 1e6
     eval_freq = 1e6
     scenario = None
     n_envs = 8
-    total_timesteps = 50_000_000
+    total_timesteps = 200_000_000
     max_episode_steps = 5e4
 
     def make_env():

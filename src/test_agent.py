@@ -24,7 +24,7 @@ def run_episode(model, env):
     episode_over = False
     obs = env.reset()
     while not episode_over:
-        action, _ = model.predict(obs, deterministic=False)
+        action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, info = env.step(action)
         episode_over = terminated
     env.close()
@@ -47,7 +47,7 @@ def main():
     state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
     scenario = None
     render_mode = "human"
-    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__00_22_44/ppo_supertennis_11000000_steps.zip"
+    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_94000000_steps.zip"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

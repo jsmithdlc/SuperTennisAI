@@ -76,7 +76,7 @@ def load_saved_model(env, model_path):
 def main():
     render_mode = None
     game = "SuperTennis-Snes"
-    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
+    states = ["SuperTennis.Singles.MattvsBarb.1-set.Hard.state"]
 
     continue_training = True
     saved_model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_100000000_steps_last_second_run.zip"
@@ -91,7 +91,7 @@ def main():
     def make_env():
         env = make_retro(
             game=game,
-            state=state,
+            states=states,
             scenario=scenario,
             render_mode=render_mode,
             max_episode_steps=max_episode_steps,

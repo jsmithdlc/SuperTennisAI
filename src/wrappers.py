@@ -4,6 +4,7 @@ import time
 
 import gymnasium as gym
 import numpy as np
+import retro
 from stable_baselines3.common.type_aliases import AtariResetReturn, AtariStepReturn
 
 
@@ -197,3 +198,30 @@ class ReturnCompensationWrapper(gym.Wrapper):
             print("Compensating player returns")
             return reward + self.compensation
         return reward
+
+
+class RandomInitialStateWrapper(gym.Wrapper):
+    """Selects initial state for the retro environment from a list of possible states.
+    Effective upon environment creation and during reset
+
+    Attributes:
+        env (gym.RetroEnv): retro environment
+        statenames (list[str]): list of states to sample initial state from. Sould be
+        the paths to the .state files relative to the game directory
+    """
+
+    def __init__(self, env: retro.RetroEnv, statenames: list[str]):
+        assert (
+            len(statenames) > 0
+        ), "Must select a non-empty list of possible initial states"
+        super(RandomInitialStateWrapper, self).__init__(env)
+        self.possible_statenames = statenames
+        self._set_random_initial_state()
+
+    def _set_random_initial_state(self):
+        init_state = random.choice(self.possible_statenames)
+        self.unwrapped.load_state(init_state, retro.data.Integrations.ALL)
+
+    def reset(self, seed=None, options=None):
+        self._set_random_initial_state()
+        return super().reset(seed=seed, options=options)

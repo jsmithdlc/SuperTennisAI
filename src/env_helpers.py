@@ -10,6 +10,7 @@ from stable_baselines3.common.monitor import Monitor
 from src.wrappers import (
     FaultPenaltyWrapper,
     FrameSkip,
+    RandomInitialStateWrapper,
     ReturnCompensationWrapper,
     StallPenaltyWrapper,
     StickyActionWrapper,
@@ -19,10 +20,9 @@ N_SKIPPED_FRAMES = 3
 STICK_PROB = 0.0
 
 
-def make_retro(*, game, state=None, max_episode_steps=4500, **kwargs):
-    if state is None:
-        state = retro.State.DEFAULT
-    env = retro.make(game, state, inttype=retro.data.Integrations.ALL, **kwargs)
+def make_retro(*, game, states: list[str], max_episode_steps=4500, **kwargs):
+    env = retro.make(game, None, inttype=retro.data.Integrations.ALL, **kwargs)
+    env = RandomInitialStateWrapper(env, states)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
     env = Monitor(env)

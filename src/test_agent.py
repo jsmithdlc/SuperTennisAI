@@ -27,7 +27,7 @@ def run_episode(model, env):
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, info = env.step(action)
         episode_over = terminated
-    env.close()
+    run_episode(model, env)
 
 
 def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
@@ -44,10 +44,13 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    state = "SuperTennis.Singles.MattvsBarb.1-set.Hard.state"
+    states = [
+        "SuperTennis.Singles.MattvsBarb.1-set.Hard.state",
+        "SuperTennis.Singles.1pvscom.MattvsJohn.1-Set.Hard.state",
+    ]
     scenario = None
     render_mode = "human"
-    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_20000000_steps.zip"
+    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_123000000_steps.zip"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )
@@ -55,7 +58,7 @@ def main():
     def make_env():
         env = make_retro(
             game=game,
-            state=state,
+            states=states,
             scenario=scenario,
             render_mode=render_mode,
             max_episode_steps=MAX_EPISODE_STEPS,

@@ -4,8 +4,12 @@
       "address": 421,
       "type": "<d2"
     },
-    "player_serving": {
-      "address": 2048,
+    "animation_running": {
+      "address": 387,
+      "type": "|u1"
+    },
+    "in_fault": {
+      "address": 288,
       "type": "|u1"
     },
     "opponent_points": {
@@ -16,12 +20,12 @@
       "address": 405,
       "type": "<d2"
     },
-    "total_sets": {
-      "address": 342,
+    "player_serving": {
+      "address": 2048,
       "type": "|u1"
     },
-    "in_fault": {
-      "address": 288,
+    "text_displayed": {
+      "address": 805,
       "type": "|u1"
     },
     "total_games": {
@@ -30,6 +34,10 @@
     },
     "total_point_returns": {
       "address": 480,
+      "type": "|u1"
+    },
+    "total_sets": {
+      "address": 342,
       "type": "|u1"
     }
   }

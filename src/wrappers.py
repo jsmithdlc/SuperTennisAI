@@ -201,7 +201,8 @@ class ReturnCompensationWrapper(gym.Wrapper):
 
 
 class RandomInitialStateWrapper(gym.Wrapper):
-    """Selects initial state for the retro environment from a list of possible states.
+    """
+    Selects initial state for the retro environment from a list of possible states.
     Effective upon environment creation and during reset
 
     Attributes:

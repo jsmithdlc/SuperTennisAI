@@ -9,6 +9,13 @@ from stable_baselines3.common.type_aliases import AtariResetReturn, AtariStepRet
 
 
 class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
+    """
+    Repeats previous action with given probability
+
+    Attributes:
+        action_repeat_probability (float): probability [0-1] of repeating previous action
+    """
+
     def __init__(self, env: gym.Env, action_repeat_probability: float) -> None:
         super().__init__(env)
         self.action_repeat_probability = action_repeat_probability
@@ -27,6 +34,12 @@ class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
 
 
 class FrameSkip(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
+    """Skips given ammount of frames
+
+    Attributes:
+        n_skip (int): skips this number of frames. Defaults to 4
+    """
+
     def __init__(self, env: gym.Env, n_skip: int = 4) -> None:
         super().__init__(env)
         self.n_skip = n_skip
@@ -58,6 +71,9 @@ class StallPenaltyWrapper(gym.Wrapper):
 
     It was observed that it is always 1 when player has ball in hand and 17 when
     bouncing it
+
+    Game Variables:
+        player_serving: indicates if player has ball in hand or is bouncing it
     """
 
     stalling_values = {1, 17}
@@ -114,6 +130,10 @@ class FaultPenaltyWrapper(gym.Wrapper):
     """
     Wrapper uses variable 'in_fault' from game data, which indicates if player
     is at fault while serving, to penalize agent for doing faults.
+
+    Game Variables:
+        in_fault: is 1 when agent is in fault
+        total_games: tracks total number of completed games
     """
 
     def __init__(self, env):
@@ -158,6 +178,10 @@ class ReturnCompensationWrapper(gym.Wrapper):
     by the agent.
 
     Note: Assumes 1-set environment where player always serves the first game
+
+    Game Variables:
+        total_games: tracks total number of completed games
+        total_point_returns: tracks total number of returns in a single point
     """
 
     def __init__(self, env, compensation=0.2):
@@ -195,6 +219,14 @@ class ReturnCompensationWrapper(gym.Wrapper):
 
 
 class SkipAnimationsWrapper(gym.Wrapper):
+    """
+    Skips environment frames where animation is being displayed and no action is effective.
+    Used for accelerating episode length
+
+    Game Variables:
+        animation_running: is 1 when animation of change of side or states are being displayed
+        text_displayed: is 1 when fault, score, net, etc text is displayed on-screen
+    """
 
     def _evaluate_if_animation(self, info):
         if info["animation_running"] == 1:

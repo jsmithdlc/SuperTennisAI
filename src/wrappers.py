@@ -58,32 +58,28 @@ class StallPenaltyWrapper(gym.Wrapper):
 
     It was observed that it is always 1 when player has ball in hand and 17 when
     bouncing it
-
-    IMPORTANT: note that the time to wait until penalty takes into account
-    a time that is spent showing the current score and where the variable is
-    also 1.
-
-    It was observed that 50 env steps ~ 3 seconds of normal game speed
     """
 
     stalling_values = {1, 17}
 
     def __init__(self, env, penalty=1, steps_till_penalty=80, skipped_frames=4):
         super(StallPenaltyWrapper, self).__init__(env)
-        self.is_serving_varname = "player_serving"
         self.penalty = penalty
         # must divide by skipped frames to get back to real time
         self.steps_till_penalty = (steps_till_penalty) // skipped_frames
-        # 200 base steps must be burned to account for score showing
-        self.base_steps = -200 // skipped_frames
         self.in_serving_state = False
+        # account for some time spent "in-serving" but agent cannot perform action
+        self.base_steps = -60 // skipped_frames
         self.step_counter = self.base_steps
+
+    def _evaluate_if_serving(self, info):
+        return info["player_serving"] in self.stalling_values
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
         return (
             observation,
-            self.reward(reward, info[self.is_serving_varname]),
+            self.reward(reward, self._evaluate_if_serving(info)),
             terminated,
             truncated,
             info,
@@ -94,19 +90,19 @@ class StallPenaltyWrapper(gym.Wrapper):
 
         Args:
             reward (float): reward as given by original environment
-            is_serving (bool): variable that indicates if player is serving when == 1
+            is_serving (bool): variable that indicates if player is serving
 
         Returns:
             float: reward with penalization if player has spent more time than
                 necessary serving.
         """
-        if is_serving in self.stalling_values and not self.in_serving_state:
+        if is_serving and not self.in_serving_state:
             self.step_counter = self.base_steps
             self.in_serving_state = True
-        elif is_serving in self.stalling_values and self.in_serving_state:
+        elif is_serving and self.in_serving_state:
             self.step_counter += 1
             if self.step_counter >= self.steps_till_penalty:
-                self.step_counter = 0  # we reset to 0 since game is already in motion
+                self.step_counter = 0  # we reset to 0
                 print("Penalizing agent for stalling")
                 return reward - self.penalty
         else:
@@ -122,14 +118,17 @@ class FaultPenaltyWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super(FaultPenaltyWrapper, self).__init__(env)
-        self.in_fault_varname = "in_fault"
         self.prev_in_fault = False
+
+    def _evaluate_if_in_fault(self, info):
+        # state in fault is activated and player is serving
+        return info["in_fault"] == 1 and info["total_games"] % 2 == 0
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
         return (
             observation,
-            self.reward(reward, info[self.in_fault_varname]),
+            self.reward(reward, self._evaluate_if_in_fault(info)),
             terminated,
             truncated,
             info,
@@ -140,12 +139,12 @@ class FaultPenaltyWrapper(gym.Wrapper):
 
         Args:
             reward (float): reward as given by original environment
-            is_serving (bool): variable that indicates if player is at fault when == 1
+            is_serving (bool): indicates if player is at fault
 
         Returns:
             float: reward with penalization if player has entered fault state
         """
-        if in_fault == 1 and not self.prev_in_fault:
+        if in_fault and not self.prev_in_fault:
             print("Penalizing agent for comitting fault")
             self.prev_in_fault = bool(in_fault)
             return reward - 1
@@ -163,8 +162,6 @@ class ReturnCompensationWrapper(gym.Wrapper):
 
     def __init__(self, env, compensation=0.2):
         super(ReturnCompensationWrapper, self).__init__(env)
-        self.total_pt_returns_varname = "total_point_returns"
-        self.total_games_varname = "total_games"
         self.cur_tot_returns = 0
         self.compensation = compensation
 
@@ -173,31 +170,50 @@ class ReturnCompensationWrapper(gym.Wrapper):
         return (
             observation,
             self.reward(
-                reward,
-                info[self.total_pt_returns_varname],
-                info[self.total_games_varname],
+                reward, info["total_point_returns"], self._is_player_return(info)
             ),
             terminated,
             truncated,
             info,
         )
 
-    def _is_player_return(self, total_games, total_pt_returns):
+    def _is_player_return(self, info):
         # game where player serves and even total_pt_returns are player returns
-        if total_games % 2 == 0 and total_pt_returns % 2 == 0:
+        if info["total_games"] % 2 == 0 and info["total_point_returns"] % 2 == 0:
             return True
         # game where player is not serving and odd total_pt_returns are player returns
-        elif total_games % 2 != 0 and total_pt_returns % 2 != 0:
+        elif info["total_games"] % 2 != 0 and info["total_point_returns"] % 2 != 0:
             return True
         return False
 
-    def reward(self, reward, total_pt_returns, total_games):
+    def reward(self, reward, total_pt_returns, is_player_return):
         delta_returns = total_pt_returns - self.cur_tot_returns
         self.cur_tot_returns = total_pt_returns
-        if delta_returns > 0 and self._is_player_return(total_games, total_pt_returns):
-            print("Compensating player returns")
+        if delta_returns > 0 and is_player_return:
             return reward + self.compensation
         return reward
+
+
+class SkipAnimationsWrapper(gym.Wrapper):
+
+    def _evaluate_if_animation(self, info):
+        if info["animation_running"] == 1:
+            return True
+        if info["text_displayed"] == 1:
+            return True
+        return False
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        in_animation = self._evaluate_if_animation(info)
+        while in_animation:
+            obs, rew, terminated, truncated, info = self.env.step(
+                action
+            )  # no op in this states
+            if terminated or truncated:
+                break
+            in_animation = self._evaluate_if_animation(info)
+        return obs, rew, terminated, truncated, info
 
 
 class RandomInitialStateWrapper(gym.Wrapper):

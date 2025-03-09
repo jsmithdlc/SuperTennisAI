@@ -27,7 +27,7 @@ def run_episode(model, env):
     while not episode_over:
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, info = env.step(action)
-        tot_reward += reward
+        tot_reward += reward[0]
         episode_over = terminated
     print(f"Total reward: {float(tot_reward):.1f}")
     env.close()
@@ -47,10 +47,11 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    states = read_statenames_from_folder("games/SuperTennis-Snes/initial_states")
+    # states = read_statenames_from_folder("games/SuperTennis-Snes/initial_states")
+    states = ["SuperTennis.Singles.MattvsBarb.1-set.Hard.state"]
     scenario = None
     render_mode = "human"
-    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_128000000_steps.zip"
+    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/best_model.zip"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

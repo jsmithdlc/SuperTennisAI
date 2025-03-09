@@ -14,7 +14,7 @@ from stable_baselines3.common.vec_env import (
 )
 from stable_baselines3.ppo import PPO
 
-from src.env_helpers import make_retro, wrap_deepmind_retro
+from src.env_helpers import make_retro, read_statenames_from_folder, wrap_deepmind_retro
 
 MAX_EPISODE_STEPS = None
 VIDEO_LENGTH = 16000
@@ -23,11 +23,14 @@ VIDEO_LENGTH = 16000
 def run_episode(model, env):
     episode_over = False
     obs = env.reset()
+    tot_reward = 0.0
     while not episode_over:
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, info = env.step(action)
+        tot_reward += reward
         episode_over = terminated
-    run_episode(model, env)
+    print(f"Total reward: {float(tot_reward):.1f}")
+    env.close()
 
 
 def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
@@ -44,13 +47,10 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    states = [
-        "SuperTennis.Singles.MattvsBarb.1-set.Hard.state",
-        "SuperTennis.Singles.1pvscom.MattvsJohn.1-Set.Hard.state",
-    ]
+    states = read_statenames_from_folder("games/SuperTennis-Snes/initial_states")
     scenario = None
     render_mode = "human"
-    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_123000000_steps.zip"
+    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_128000000_steps.zip"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

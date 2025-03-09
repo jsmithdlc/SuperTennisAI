@@ -1,3 +1,5 @@
+import os
+
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3.common.atari_wrappers import (
@@ -18,6 +20,11 @@ from src.wrappers import (
 
 N_SKIPPED_FRAMES = 3
 STICK_PROB = 0.0
+
+
+def read_statenames_from_folder(folder):
+    statenames = [file for file in os.listdir(folder) if file.split(".")[-1] == "state"]
+    return statenames
 
 
 def make_retro(*, game, states: list[str], max_episode_steps=4500, **kwargs):

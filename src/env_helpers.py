@@ -46,7 +46,7 @@ def wrap_deepmind_retro(env):
     env = FrameSkip(env, n_skip=N_SKIPPED_FRAMES)
     env = WarpFrame(env)
     env = StallPenaltyWrapper(env, skipped_frames=N_SKIPPED_FRAMES)
-    env = FaultPenaltyWrapper(env)
-    # env = ReturnCompensationWrapper(env)
+    env = FaultPenaltyWrapper(env, penalty=0.5)
+    env = ReturnCompensationWrapper(env)
     env = ClipRewardEnv(env)
     return env

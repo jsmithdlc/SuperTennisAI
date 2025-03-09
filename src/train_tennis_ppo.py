@@ -24,7 +24,7 @@ from stable_baselines3.common.vec_env import (
 )
 
 from src.callbacks import HParamCallback
-from src.env_helpers import make_retro, wrap_deepmind_retro
+from src.env_helpers import make_retro, read_statenames_from_folder, wrap_deepmind_retro
 
 
 def create_policy_params():
@@ -76,7 +76,7 @@ def load_saved_model(env, model_path):
 def main():
     render_mode = None
     game = "SuperTennis-Snes"
-    states = ["SuperTennis.Singles.MattvsBarb.1-set.Hard.state"]
+    states = read_statenames_from_folder("games/SuperTennis-Snes/initial_states")
 
     continue_training = True
     saved_model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28/ppo_supertennis_100000000_steps_last_second_run.zip"

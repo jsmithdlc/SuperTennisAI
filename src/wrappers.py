@@ -136,9 +136,10 @@ class FaultPenaltyWrapper(gym.Wrapper):
         total_games: tracks total number of completed games
     """
 
-    def __init__(self, env):
+    def __init__(self, env, penalty=1):
         super(FaultPenaltyWrapper, self).__init__(env)
         self.prev_in_fault = False
+        self.fault_penalty = penalty
 
     def _evaluate_if_in_fault(self, info):
         # state in fault is activated and player is serving
@@ -167,7 +168,7 @@ class FaultPenaltyWrapper(gym.Wrapper):
         if in_fault and not self.prev_in_fault:
             print("Penalizing agent for comitting fault")
             self.prev_in_fault = bool(in_fault)
-            return reward - 1
+            return reward - self.fault_penalty
         self.prev_in_fault = bool(in_fault)
         return reward
 

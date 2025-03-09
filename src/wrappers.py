@@ -150,3 +150,50 @@ class FaultPenaltyWrapper(gym.Wrapper):
             return reward - 1
         self.prev_in_fault = bool(in_fault)
         return reward
+
+
+class ReturnCompensationWrapper(gym.Wrapper):
+    """
+    Wrapper keeps track of the number of returned balls (successful or not) achieved
+    by the agent.
+
+    Note: Assumes 1-set environment where player always serves the first game
+    """
+
+    def __init__(self, env, compensation=0.2):
+        super(ReturnCompensationWrapper, self).__init__(env)
+        self.total_pt_returns_varname = "total_point_returns"
+        self.total_games_varname = "total_games"
+        self.cur_tot_returns = 0
+        self.compensation = compensation
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        return (
+            observation,
+            self.reward(
+                reward,
+                info[self.total_pt_returns_varname],
+                info[self.total_games_varname],
+            ),
+            terminated,
+            truncated,
+            info,
+        )
+
+    def _is_player_return(self, total_games, total_pt_returns):
+        # game where player serves and even total_pt_returns are player returns
+        if total_games % 2 == 0 and total_pt_returns % 2 == 0:
+            return True
+        # game where player is not serving and odd total_pt_returns are player returns
+        elif total_games % 2 != 0 and total_pt_returns % 2 != 0:
+            return True
+        return False
+
+    def reward(self, reward, total_pt_returns, total_games):
+        delta_returns = total_pt_returns - self.cur_tot_returns
+        self.cur_tot_returns = total_pt_returns
+        if delta_returns > 0 and self._is_player_return(total_games, total_pt_returns):
+            print("Compensating player returns")
+            return reward + self.compensation
+        return reward

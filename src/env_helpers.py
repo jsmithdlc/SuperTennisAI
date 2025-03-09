@@ -10,6 +10,7 @@ from stable_baselines3.common.monitor import Monitor
 from src.wrappers import (
     FaultPenaltyWrapper,
     FrameSkip,
+    ReturnCompensationWrapper,
     StallPenaltyWrapper,
     StickyActionWrapper,
 )
@@ -37,5 +38,6 @@ def wrap_deepmind_retro(env):
     env = WarpFrame(env)
     env = StallPenaltyWrapper(env, skipped_frames=N_SKIPPED_FRAMES)
     env = FaultPenaltyWrapper(env)
+    # env = ReturnCompensationWrapper(env)
     env = ClipRewardEnv(env)
     return env

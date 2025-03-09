@@ -23,6 +23,14 @@
     "in_fault": {
       "address": 288,
       "type": "|u1"
-    }
+    },
+    "total_games": {
+      "address": 551,
+      "type": "|u1"
+    },
+    "total_point_returns": {
+      "address": 480,
+      "type": "|u1"
+    },
   }
 }

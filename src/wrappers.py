@@ -1,6 +1,4 @@
-import pprint
 import random
-import time
 
 import gymnasium as gym
 import numpy as np
@@ -78,14 +76,16 @@ class StallPenaltyWrapper(gym.Wrapper):
 
     stalling_values = {1, 17}
 
-    def __init__(self, env, penalty=1, steps_till_penalty=80, skipped_frames=4):
+    def __init__(
+        self, env, penalty=1, base_steps=60, steps_till_penalty=80, skipped_frames=4
+    ):
         super(StallPenaltyWrapper, self).__init__(env)
         self.penalty = penalty
         # must divide by skipped frames to get back to real time
         self.steps_till_penalty = (steps_till_penalty) // skipped_frames
         self.in_serving_state = False
         # account for some time spent "in-serving" but agent cannot perform action
-        self.base_steps = -60 // skipped_frames
+        self.base_steps = -base_steps // skipped_frames
         self.step_counter = self.base_steps
 
     def _evaluate_if_serving(self, info):
@@ -240,11 +240,11 @@ class SkipAnimationsWrapper(gym.Wrapper):
         obs, rew, terminated, truncated, info = self.env.step(action)
         in_animation = self._evaluate_if_animation(info)
         while in_animation:
+            if terminated or truncated:
+                break
             obs, rew, terminated, truncated, info = self.env.step(
                 action
             )  # no op in this states
-            if terminated or truncated:
-                break
             in_animation = self._evaluate_if_animation(info)
         return obs, rew, terminated, truncated, info
 

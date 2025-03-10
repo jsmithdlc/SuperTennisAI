@@ -14,7 +14,7 @@ from stable_baselines3.common.vec_env import (
 )
 from stable_baselines3.ppo import PPO
 
-from src.env_helpers import make_retro, read_statenames_from_folder, wrap_deepmind_retro
+from src.env_helpers import make_retro, wrap_deepmind_retro
 
 MAX_EPISODE_STEPS = None
 VIDEO_LENGTH = 10000
@@ -50,7 +50,7 @@ def main():
     states = ["SuperTennis.Singles.MattvsBarb.1-set.Hard.state"]
     scenario = None
     render_mode = "human"
-    model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28_FIRST_SUCCESSFUL/best_model.zip"
+    model_path = "logs/ppo_st_multi_states_10_03_2025__08_25_59/checkpoints/ppo_supertennis_7000000_steps.zip"
     video_path = os.path.join(
         "./logs", "videos", os.path.basename(os.path.dirname(model_path))
     )

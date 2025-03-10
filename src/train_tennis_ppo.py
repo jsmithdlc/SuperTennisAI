@@ -2,11 +2,8 @@
 Train an agent using Proximal Policy Optimization from Stable Baselines 3
 """
 
-import argparse
 import os
 
-import gymnasium as gym
-import numpy as np
 import retro
 
 # add custom game integration folder path to retro
@@ -30,7 +27,7 @@ from src.env_helpers import make_retro, read_statenames_from_folder, wrap_deepmi
 def create_policy_params():
     params = {
         "initial_lr": 2.5e-4,
-        "clip_range": 0.1,
+        "clip_range": 0.05,
         "ent_coef": 0.01,
         "batch_size": 1024,
         "gamma": 0.99,
@@ -74,7 +71,7 @@ def load_saved_model(env, model_path):
 
 
 def main():
-    render_mode = "human"
+    render_mode = None
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/initial_states")
 

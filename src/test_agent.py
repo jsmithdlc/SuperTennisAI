@@ -14,6 +14,7 @@ from stable_baselines3.common.vec_env import (
 )
 from stable_baselines3.ppo import PPO
 
+from src.config import load_from_yaml
 from src.env_helpers import make_retro, wrap_deepmind_retro
 
 MAX_EPISODE_STEPS = None
@@ -47,13 +48,16 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    states = ["SuperTennis.Singles.MattvsBarb.1-set.Hard.state"]
+    states = [
+        "initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsErin.1-set.Lawn.state"
+    ]
     scenario = None
     render_mode = "human"
-    model_path = "logs/ppo_st_multi_states_10_03_2025__08_25_59/checkpoints/ppo_supertennis_7000000_steps.zip"
-    video_path = os.path.join(
-        "./logs", "videos", os.path.basename(os.path.dirname(model_path))
-    )
+    logname = "logs/ppo_st_multi_states_11_03_2025__08_20_41"
+
+    model_path = f"{logname}/checkpoints/ppo_supertennis_6000000_steps.zip"
+    video_path = os.path.join(logname, "./logs", "videos")
+    config = load_from_yaml(os.path.join(logname, "config.yml"))
 
     def make_env():
         env = make_retro(
@@ -63,7 +67,7 @@ def main():
             render_mode=render_mode,
             max_episode_steps=MAX_EPISODE_STEPS,
         )
-        env = wrap_deepmind_retro(env)
+        env = wrap_deepmind_retro(env, config)
         return env
 
     venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))

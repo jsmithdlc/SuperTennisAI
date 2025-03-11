@@ -5,6 +5,7 @@ from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
 from stable_baselines3.common.monitor import Monitor
 
+from src.config import ExperimentConfig
 from src.wrappers import (
     FaultPenaltyWrapper,
     FrameSkip,
@@ -37,16 +38,25 @@ def make_retro(*, game, states: list[str], max_episode_steps=4500, **kwargs):
     return env
 
 
-def wrap_deepmind_retro(env):
+def wrap_deepmind_retro(env, config: ExperimentConfig):
     """
     Configure environment for retro games, using config similar to DeepMind-style Atari in openai/baseline's wrap_deepmind
     """
-    env = SkipAnimationsWrapper(env)
-    env = StickyActionWrapper(env, STICK_PROB)
-    env = FrameSkip(env, n_skip=N_SKIPPED_FRAMES)
+    if config.skip_animations:
+        env = SkipAnimationsWrapper(env)
+    env = StickyActionWrapper(env, config.sticky_prob)
+    env = FrameSkip(env, n_skip=config.n_skip)
     env = WarpFrame(env)
-    env = StallPenaltyWrapper(env, skipped_frames=N_SKIPPED_FRAMES)
-    env = FaultPenaltyWrapper(env, penalty=0.5)
-    env = ReturnCompensationWrapper(env)
-    env = ClipRewardEnv(env)
+    env = StallPenaltyWrapper(
+        env,
+        base_steps=(
+            60 if config.skip_animations else 200
+        ),  # must account for animations if not skipped
+        penalty=config.stall_penalty,
+        skipped_frames=config.n_skip,
+    )
+    env = FaultPenaltyWrapper(env, penalty=config.fault_penalty)
+    env = ReturnCompensationWrapper(env, compensation=config.ball_return_reward)
+    if config.clip_rewards:
+        env = ClipRewardEnv(env)
     return env

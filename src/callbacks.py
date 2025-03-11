@@ -1,6 +1,8 @@
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.logger import HParam
 
+from src.config import ExperimentConfig
+
 
 class HParamCallback(BaseCallback):
     """
@@ -8,18 +10,11 @@ class HParamCallback(BaseCallback):
     Adapted from: https://stable-baselines3.readthedocs.io/en/master/guide/tensorboard.html#logging-hyperparameters
     """
 
+    def __init__(self, config: ExperimentConfig, verbose: int = 0):
+        super().__init__(verbose)
+        self.exp_config = config
+
     def _on_training_start(self) -> None:
-        hparam_dict = {
-            "algorithm": self.model.__class__.__name__,
-            "gamma": self.model.gamma,
-            "ent_coef": self.model.ent_coef,
-            "batch_size": self.model.batch_size,
-            "gae_lambda": self.model.gae_lambda,
-            "max_grad_norm": self.model.max_grad_norm,
-            "vf_coef": self.model.vf_coef,
-            "n_epochs": self.model.n_epochs,
-            "n_steps": self.model.n_steps,
-        }
         # define the metrics that will appear in the `HPARAMS` Tensorboard tab by referencing their tag
         # Tensorboard will find & display metrics from the `SCALARS` tab
         metric_dict = {
@@ -30,7 +25,7 @@ class HParamCallback(BaseCallback):
         }
         self.logger.record(
             "hparams",
-            HParam(hparam_dict, metric_dict),
+            HParam(self.exp_config.to_dict(), metric_dict),
             exclude=("stdout", "log", "json", "csv"),
         )
 

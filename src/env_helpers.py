@@ -9,7 +9,7 @@ from src.config import ExperimentConfig
 from src.wrappers import (
     FaultPenaltyWrapper,
     FrameSkip,
-    RandomInitialStateWrapper,
+    InitialStateSetterWrapper,
     ReturnCompensationWrapper,
     SkipAnimationsWrapper,
     StallPenaltyWrapper,
@@ -29,9 +29,9 @@ def read_statenames_from_folder(folder):
     return statenames
 
 
-def make_retro(*, game, states: list[str], max_episode_steps=4500, **kwargs):
-    env = retro.make(game, None, inttype=retro.data.Integrations.ALL, **kwargs)
-    env = RandomInitialStateWrapper(env, states)
+def make_retro(*, game, state, max_episode_steps=4500, **kwargs):
+    env = retro.make(game, state, inttype=retro.data.Integrations.ALL, **kwargs)
+    env = InitialStateSetterWrapper(env)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
     env = Monitor(env)

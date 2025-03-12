@@ -1,9 +1,11 @@
+import gzip
 import random
 
 import gymnasium as gym
 import numpy as np
 import retro
 from stable_baselines3.common.type_aliases import AtariResetReturn, AtariStepReturn
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
 
 class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
@@ -249,29 +251,72 @@ class SkipAnimationsWrapper(gym.Wrapper):
         return obs, rew, terminated, truncated, info
 
 
-class RandomInitialStateWrapper(gym.Wrapper):
+class InitialStateSetterWrapper(gym.Wrapper):
     """
-    Selects initial state for the retro environment from a list of possible states.
-    Effective upon environment creation and during reset
+    Sets a given initial state when environment is reset. Works with `RandomStatesSubProcVecEnv` through the
+    options argument.
 
-    Attributes:
-        env (gym.RetroEnv): retro environment
-        statenames (list[str]): list of states to sample initial state from. Sould be
-        the paths to the .state files relative to the game directory
+    initial_state should be path or filename of state relative to game directory
     """
-
-    def __init__(self, env: retro.RetroEnv, statenames: list[str]):
-        assert (
-            len(statenames) > 0
-        ), "Must select a non-empty list of possible initial states"
-        super(RandomInitialStateWrapper, self).__init__(env)
-        self.possible_statenames = statenames
-        self._set_random_initial_state()
-
-    def _set_random_initial_state(self):
-        init_state = random.choice(self.possible_statenames)
-        self.unwrapped.load_state(init_state, retro.data.Integrations.ALL)
 
     def reset(self, seed=None, options=None):
-        self._set_random_initial_state()
+        if options is not None and "initial_state" in options:
+            self.unwrapped.load_state(
+                options["initial_state"], retro.data.Integrations.ALL
+            )
         return super().reset(seed=seed, options=options)
+
+
+class RandomStatesSubProcVecEnv(SubprocVecEnv):
+    """
+    Given a list of state files, samples an initial state for each environment based on the following rules:
+
+    1. if number of environments is bigger than number of states, repeats each environment by the multiplier
+    `len(n_envs) // n_states` and samples at random for remainder environments
+    2. if number of environments is smaller or equal than number of states, samples `n_envs` states (without
+    replacement) uniformly.
+
+    :param env_fns: Environments to run in subprocesses
+    :param start_method: method used to start the subprocesses.
+           Must be one of the methods returned by multiprocessing.get_all_start_methods().
+           Defaults to 'forkserver' on available platforms, and 'spawn' otherwise.
+    :param start_statenames: list of path to state files to sample initial states from. Must be relative
+    to game directory
+
+    """
+
+    def __init__(self, env_fns, start_method=None, start_statenames=list[str]):
+        super().__init__(env_fns, start_method)
+        self.statenames = start_statenames
+        self.n_envs = len(env_fns)
+
+    def _set_initial_states(self, initial_states: list[str]):
+        """Sets initial states for each environment
+
+        Args:
+            initial_states (list[str]): list of states to initialize
+        """
+        init_states = [{"initial_state": init_state} for init_state in initial_states]
+        self.set_options(init_states)
+
+    def sample_initial_states(self) -> list[str]:
+        """Samples `self.n_envs` initial states at random, avoiding duplication if possible
+
+        Returns:
+            list[str]: list of sampled states
+        """
+        if len(self.statenames) >= self.n_envs:
+            initial_states = random.sample(self.statenames, self.n_envs)
+        else:
+            initial_states = self.statenames * (self.n_envs // len(self.statenames))
+            rem_states = random.sample(
+                self.statenames, self.n_envs % len(self.statenames)
+            )
+            initial_states += rem_states
+            print(initial_states)
+        return initial_states
+
+    def reset(self):
+        initial_states = self.sample_initial_states()
+        self._set_initial_states(initial_states)
+        return super().reset()

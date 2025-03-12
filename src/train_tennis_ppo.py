@@ -23,6 +23,7 @@ from stable_baselines3.common.vec_env import (
 from src.callbacks import HParamCallback
 from src.config import PPOConfig, load_from_yaml, save_to_yaml
 from src.env_helpers import make_retro, read_statenames_from_folder, wrap_deepmind_retro
+from src.wrappers import RandomStatesSubProcVecEnv
 
 
 def create_logname(saved_model_path, continue_training, prefix="ppo_super_tennis"):
@@ -53,7 +54,7 @@ def load_saved_model(env, model_path):
 def main():
     render_mode = "human"
     game = "SuperTennis-Snes"
-    states = read_statenames_from_folder("games/SuperTennis-Snes/initial_states")
+    states = read_statenames_from_folder("games/SuperTennis-Snes/hard_initial_states")
 
     continue_training = False
     saved_model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28_FIRST_SUCCESSFUL/best_model.zip"
@@ -70,7 +71,7 @@ def main():
     os.makedirs(os.path.join("logs", logname))
 
     # initialize configuration
-    config = PPOConfig()
+    config = PPOConfig(n_skip=3)
     if continue_training:
         assert os.path.exists(
             saved_model_path
@@ -83,7 +84,7 @@ def main():
     def make_env():
         env = make_retro(
             game=game,
-            states=states,
+            state=retro.State.DEFAULT,
             scenario=scenario,
             render_mode=render_mode,
             max_episode_steps=max_episode_steps,
@@ -93,7 +94,10 @@ def main():
 
     # create training and evaluation environments
     venv = VecTransposeImage(
-        VecFrameStack(SubprocVecEnv([make_env] * n_envs), n_stack=4)
+        VecFrameStack(
+            RandomStatesSubProcVecEnv([make_env] * n_envs, start_statenames=states),
+            n_stack=4,
+        )
     )
     eval_venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
 

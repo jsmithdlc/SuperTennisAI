@@ -44,15 +44,17 @@ def initialize_model(env, config: PPOConfig):
     return model
 
 
-def load_saved_model(env, model_path):
+def load_saved_model(env, model_path, config):
     print(f"Load saved model from path: {model_path}")
-    model = PPO.load(model_path, tensorboard_log="./logs/")
-    model.set_env(env)
+    saved_model = PPO.load(model_path, env=env)
+    model = initialize_model(env, config)
+    model.policy.load_state_dict(saved_model.policy.state_dict())
+    del saved_model
     return model
 
 
 def main():
-    render_mode = "human"
+    render_mode = None
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/hard_initial_states")
 
@@ -71,7 +73,9 @@ def main():
     os.makedirs(os.path.join("logs", logname))
 
     # initialize configuration
-    config = PPOConfig(n_skip=3)
+    config = PPOConfig(
+        n_skip=3, skip_animations=False, initial_lr=2.5e-4, ent_coef=0.005
+    )
     if continue_training:
         assert os.path.exists(
             saved_model_path
@@ -118,7 +122,7 @@ def main():
     )
 
     if saved_model_path is not None:
-        model = load_saved_model(venv, saved_model_path)
+        model = load_saved_model(venv, saved_model_path, config)
     else:
         model = initialize_model(venv, config)
 

@@ -42,7 +42,7 @@ class PPOConfig(ExperimentConfig):
     algo_name: str = "PPO"
 
     # POLICY parameters to be set during creation
-    clip_range: float = 0.05
+    clip_range: float = 0.1
     ent_coef: float = 0.01
     gae_lambda: float = 0.95
     max_grad_norm: float = 0.5

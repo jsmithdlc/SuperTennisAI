@@ -313,7 +313,6 @@ class RandomStatesSubProcVecEnv(SubprocVecEnv):
                 self.statenames, self.n_envs % len(self.statenames)
             )
             initial_states += rem_states
-            print(initial_states)
         return initial_states
 
     def reset(self):

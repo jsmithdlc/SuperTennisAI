@@ -48,21 +48,20 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    states = [
-        "initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsErin.1-set.Lawn.state"
-    ]
+    state = "hard_initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsHiro.1-set.Hard.state"
+
     scenario = None
     render_mode = "human"
-    logname = "logs/ppo_st_multi_states_11_03_2025__08_20_41"
+    logname = "logs/ppo_st_multi_states_13_03_2025__00_16_06"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_6000000_steps.zip"
+    model_path = f"{logname}/checkpoints/ppo_supertennis_15000000_steps.zip"
     video_path = os.path.join(logname, "./logs", "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 
     def make_env():
         env = make_retro(
             game=game,
-            states=states,
+            state=state,
             scenario=scenario,
             render_mode=render_mode,
             max_episode_steps=MAX_EPISODE_STEPS,

@@ -73,9 +73,7 @@ def main():
     os.makedirs(os.path.join("logs", logname))
 
     # initialize configuration
-    config = PPOConfig(
-        n_skip=3, skip_animations=False, initial_lr=2.5e-4, ent_coef=0.005
-    )
+    config = PPOConfig(n_skip=3, skip_animations=False, initial_lr=5e-5, ent_coef=0.001)
     if continue_training:
         assert os.path.exists(
             saved_model_path
@@ -103,7 +101,9 @@ def main():
             n_stack=4,
         )
     )
-    eval_venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
+    eval_venv = VecTransposeImage(
+        VecFrameStack(RandomStatesSubProcVecEnv([make_env]), n_stack=4)
+    )
 
     # evaluation callback
     eval_cb = EvalCallback(
@@ -113,7 +113,7 @@ def main():
         render=False,
         deterministic=True,
         eval_freq=eval_freq // n_envs,
-        n_eval_episodes=2,
+        n_eval_episodes=4,
     )
     ckpt_callback = CheckpointCallback(
         save_freq=save_freq // n_envs,

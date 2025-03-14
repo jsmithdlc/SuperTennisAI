@@ -70,7 +70,7 @@ def main():
     save_freq = 1e6
     eval_freq = 1e6
     scenario = None
-    n_envs = 2
+    n_envs = 8
     total_timesteps = 100_000_000
     max_episode_steps = 5e4
 

@@ -83,7 +83,7 @@ def split_initial_states(initial_states: list[str], n_envs: int) -> list[list[st
             splits.append([str(s) for s in split])
         state_splits = splits
     else:
-        state_splits = [[s] for s in initial_states]
-        for _ in range(n_envs - len(initial_states)):
+        state_splits = [[s] for s in initial_states * (n_envs // len(initial_states))]
+        for _ in range(n_envs % len(initial_states)):
             state_splits.append(initial_states)
     return state_splits

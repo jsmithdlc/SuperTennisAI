@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
@@ -29,9 +30,11 @@ def read_statenames_from_folder(folder):
     return statenames
 
 
-def make_retro(*, game, state, max_episode_steps=4500, **kwargs):
-    env = retro.make(game, state, inttype=retro.data.Integrations.ALL, **kwargs)
-    env = InitialStateSetterWrapper(env)
+def make_retro(*, game, states, max_episode_steps=4500, seed=None, **kwargs):
+    env = retro.make(
+        game, retro.State.DEFAULT, inttype=retro.data.Integrations.ALL, **kwargs
+    )
+    env = InitialStateSetterWrapper(env, states=states, seed=seed)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
     env = Monitor(env)
@@ -60,3 +63,27 @@ def wrap_deepmind_retro(env, config: ExperimentConfig):
     if config.clip_rewards:
         env = ClipRewardEnv(env)
     return env
+
+
+def split_initial_states(initial_states: list[str], n_envs: int) -> list[list[str]]:
+    """Splits initial states among the different environments, assigning non-overlapping
+    states whenever possible (i.e. n_envs < initial_states)
+
+    Args:
+        initial_states (list[str]): initial states to distribute among environments
+        n_envs (int): number of environments
+
+    Returns:
+        list[list[str]]: list of states for each environment
+    """
+    if len(initial_states) >= n_envs:
+        state_splits = np.array_split(initial_states, n_envs)
+        splits = []
+        for split in state_splits:
+            splits.append([str(s) for s in split])
+        state_splits = splits
+    else:
+        state_splits = [[s] for s in initial_states]
+        for _ in range(n_envs - len(initial_states)):
+            state_splits.append(initial_states)
+    return state_splits

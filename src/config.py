@@ -7,6 +7,7 @@ import yaml
 @dataclass
 class ExperimentConfig:
     algo_name: str = "Generic"
+    seed: int = 23
 
     # Common Policy params
     initial_lr: float = 2.5e-4

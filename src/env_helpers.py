@@ -1,5 +1,6 @@
 import os
 
+import gymnasium as gym
 import numpy as np
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
@@ -16,9 +17,6 @@ from src.wrappers import (
     StallPenaltyWrapper,
     StickyActionWrapper,
 )
-
-N_SKIPPED_FRAMES = 3
-STICK_PROB = 0.0
 
 
 def read_statenames_from_folder(folder):
@@ -37,7 +35,6 @@ def make_retro(*, game, states, max_episode_steps=4500, seed=None, **kwargs):
     env = InitialStateSetterWrapper(env, states=states, seed=seed)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
-    env = Monitor(env)
     return env
 
 
@@ -62,6 +59,14 @@ def wrap_deepmind_retro(env, config: ExperimentConfig):
     env = ReturnCompensationWrapper(env, compensation=config.ball_return_reward)
     if config.clip_rewards:
         env = ClipRewardEnv(env)
+    env = Monitor(
+        env,
+        info_keywords=[
+            StallPenaltyWrapper.episode_stall_varname,
+            FaultPenaltyWrapper.episode_faults_varname,
+            ReturnCompensationWrapper.episode_ball_returns_varname,
+        ],
+    )
     return env
 
 

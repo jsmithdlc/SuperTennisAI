@@ -1,11 +1,7 @@
-import gzip
-import random
-
 import gymnasium as gym
 import numpy as np
 import retro
 from stable_baselines3.common.type_aliases import AtariResetReturn, AtariStepReturn
-from stable_baselines3.common.vec_env import SubprocVecEnv
 
 
 class StickyActionWrapper(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
@@ -77,6 +73,7 @@ class StallPenaltyWrapper(gym.Wrapper):
     """
 
     stalling_values = {1, 17}
+    episode_stall_varname = "stall_count"
 
     def __init__(
         self, env, penalty=1, base_steps=60, steps_till_penalty=80, skipped_frames=4
@@ -89,15 +86,20 @@ class StallPenaltyWrapper(gym.Wrapper):
         # account for some time spent "in-serving" but agent cannot perform action
         self.base_steps = -base_steps // skipped_frames
         self.step_counter = self.base_steps
+        self.ep_stall_count = 0
 
     def _evaluate_if_serving(self, info):
         return info["player_serving"] in self.stalling_values
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
+        new_reward = self.reward(reward, self._evaluate_if_serving(info))
+        if terminated or truncated:
+            info[self.episode_stall_varname] = self.ep_stall_count
+            self.ep_stall_count = 0
         return (
             observation,
-            self.reward(reward, self._evaluate_if_serving(info)),
+            new_reward,
             terminated,
             truncated,
             info,
@@ -122,6 +124,7 @@ class StallPenaltyWrapper(gym.Wrapper):
             if self.step_counter >= self.steps_till_penalty:
                 self.step_counter = 0  # we reset to 0
                 print("Penalizing agent for stalling")
+                self.ep_stall_count += 1
                 return reward - self.penalty
         else:
             self.in_serving_state = False
@@ -138,10 +141,13 @@ class FaultPenaltyWrapper(gym.Wrapper):
         total_games: tracks total number of completed games
     """
 
+    episode_faults_varname = "faults"
+
     def __init__(self, env, penalty=1):
         super(FaultPenaltyWrapper, self).__init__(env)
         self.prev_in_fault = False
         self.fault_penalty = penalty
+        self.ep_faults = 0
 
     def _evaluate_if_in_fault(self, info):
         # state in fault is activated and player is serving
@@ -149,9 +155,13 @@ class FaultPenaltyWrapper(gym.Wrapper):
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
+        new_reward = self.reward(reward, self._evaluate_if_in_fault(info))
+        if terminated or truncated:
+            info[self.episode_faults_varname] = self.ep_faults
+            self.ep_faults = 0
         return (
             observation,
-            self.reward(reward, self._evaluate_if_in_fault(info)),
+            new_reward,
             terminated,
             truncated,
             info,
@@ -169,6 +179,7 @@ class FaultPenaltyWrapper(gym.Wrapper):
         """
         if in_fault and not self.prev_in_fault:
             print("Penalizing agent for comitting fault")
+            self.ep_faults += 1
             self.prev_in_fault = bool(in_fault)
             return reward - self.fault_penalty
         self.prev_in_fault = bool(in_fault)
@@ -187,18 +198,25 @@ class ReturnCompensationWrapper(gym.Wrapper):
         total_point_returns: tracks total number of returns in a single point
     """
 
+    episode_ball_returns_varname = "ball_returns"
+
     def __init__(self, env, compensation=0.2):
         super(ReturnCompensationWrapper, self).__init__(env)
         self.cur_tot_returns = 0
         self.compensation = compensation
+        self.ep_ball_returns = 0
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
+        new_reward = self.reward(
+            reward, info["total_point_returns"], self._is_player_return(info)
+        )
+        if terminated or truncated:
+            info[self.episode_ball_returns_varname] = self.ep_ball_returns
+            self.ep_ball_returns = 0
         return (
             observation,
-            self.reward(
-                reward, info["total_point_returns"], self._is_player_return(info)
-            ),
+            new_reward,
             terminated,
             truncated,
             info,
@@ -217,6 +235,7 @@ class ReturnCompensationWrapper(gym.Wrapper):
         delta_returns = total_pt_returns - self.cur_tot_returns
         self.cur_tot_returns = total_pt_returns
         if delta_returns > 0 and is_player_return:
+            self.ep_ball_returns += 1
             return reward + self.compensation
         return reward
 

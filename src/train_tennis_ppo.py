@@ -13,14 +13,13 @@ retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 from datetime import datetime
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecFrameStack,
     VecTransposeImage,
 )
 
-from src.callbacks import HParamCallback
+from src.callbacks import initialize_callbacks
 from src.config import PPOConfig, load_from_yaml, save_to_yaml
 from src.env_helpers import (
     make_retro,
@@ -44,6 +43,7 @@ def initialize_model(env, config: PPOConfig):
         learning_rate=lambda f: f * config.initial_lr,
         verbose=1,
         seed=config.seed,
+        stats_window_size=config.stats_window_size,
         **config.get_policy_params(),
     )
     return model
@@ -64,21 +64,25 @@ def main():
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
     continue_training = False
-    saved_model_path = "logs/checkpoints/ppo_super_tennis_06_03_2025__09_52_28_FIRST_SUCCESSFUL/best_model.zip"
+    saved_model_path = None
     exp_prefix = "ppo_st_multi_states"
 
-    save_freq = 1e6
-    eval_freq = 1e6
     scenario = None
-    n_envs = 8
-    total_timesteps = 100_000_000
     max_episode_steps = 5e4
 
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
     os.makedirs(os.path.join("logs", logname))
 
     # initialize configuration
-    config = PPOConfig(n_skip=3, skip_animations=False, clip_rewards=False)
+    config = PPOConfig(
+        n_skip=4,
+        sticky_prob=0.25,
+        skip_animations=True,
+        clip_rewards=True,
+        fault_penalty=0.5,
+        ball_return_reward=0.5,
+    )
+
     if continue_training:
         assert os.path.exists(
             saved_model_path
@@ -103,7 +107,7 @@ def main():
 
         return make_env
 
-    state_splits = split_initial_states(states, n_envs)
+    state_splits = split_initial_states(states, config.n_envs)
 
     # create training and evaluation environments
     venv = VecTransposeImage(
@@ -119,21 +123,8 @@ def main():
         )
     )
 
-    # evaluation callback
-    eval_cb = EvalCallback(
-        eval_venv,
-        best_model_save_path=os.path.join("./logs", logname, "checkpoints"),
-        log_path=os.path.join("./logs", logname, "eval_metrics"),
-        render=False,
-        deterministic=True,
-        eval_freq=eval_freq // n_envs,
-        n_eval_episodes=4,
-    )
-    ckpt_callback = CheckpointCallback(
-        save_freq=save_freq // n_envs,
-        save_path=os.path.join("./logs", logname, "checkpoints"),
-        name_prefix="ppo_supertennis",
-    )
+    # additional callbacks
+    callbacks = initialize_callbacks(eval_venv, config, logname)
 
     if saved_model_path is not None:
         model = load_saved_model(venv, saved_model_path, config)
@@ -141,10 +132,10 @@ def main():
         model = initialize_model(venv, config)
 
     model.learn(
-        total_timesteps=total_timesteps,
-        callback=[eval_cb, ckpt_callback, HParamCallback(config)],
+        total_timesteps=config.total_timesteps,
+        callback=callbacks,
         tb_log_name=os.path.join(logname, "tensorboard"),
-        log_interval=1,
+        log_interval=config.log_interval,
         reset_num_timesteps=False if continue_training else True,
     )
     model.save(os.path.join("./logs", logname, "checkpoints", "last_model"))

@@ -9,22 +9,31 @@ class ExperimentConfig:
     algo_name: str = "Generic"
     seed: int = 23
 
-    # Common Policy params
+    # Common Experiment params
     initial_lr: float = 2.5e-4
     batch_size: int = 1024
     gamma: float = 0.99
     n_epochs: int = 4
     n_steps: int = 512
+    n_envs: int = 8
+    total_timesteps: int = 100_000_000
 
     # PREPROCESSING steps to be applied to environment
     skip_animations: bool = True
     clip_rewards: bool = True
-    sticky_prob: float = 0.0
+    sticky_prob: float = 0.25
     n_skip: int = 4
 
+    # REWARD function modifications
     stall_penalty: float = 1.0
     fault_penalty: float = 0.5
     ball_return_reward: float = 0.2
+
+    # Logging parameters
+    log_interval: int = 1
+    stats_window_size: int = 16
+    save_freq: int = 1e6
+    eval_freq: int = 1e6
 
     def get_policy_params(self) -> dict[str, Any]:
         return {

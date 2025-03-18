@@ -26,7 +26,7 @@ def run_episode(model, env):
     obs = env.reset()
     tot_reward = 0.0
     while not episode_over:
-        action, _ = model.predict(obs, deterministic=True)
+        action, _ = model.predict(obs, deterministic=False)
         obs, reward, terminated, info = env.step(action)
         tot_reward += reward[0]
         episode_over = terminated
@@ -48,20 +48,22 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 
 def main():
     game = "SuperTennis-Snes"
-    state = "hard_initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsHiro.1-set.Hard.state"
+    states = [
+        "working_init_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsDonna.1-set.Hard.state"
+    ]
 
     scenario = None
     render_mode = "human"
-    logname = "logs/ppo_st_multi_states_13_03_2025__00_16_06"
+    logname = "logs/ppo_st_multi_states_14_03_2025__18_58_44"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_15000000_steps.zip"
+    model_path = f"{logname}/checkpoints/ppo_supertennis_75000000_steps.zip"
     video_path = os.path.join(logname, "./logs", "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 
     def make_env():
         env = make_retro(
             game=game,
-            state=state,
+            states=states,
             scenario=scenario,
             render_mode=render_mode,
             max_episode_steps=MAX_EPISODE_STEPS,

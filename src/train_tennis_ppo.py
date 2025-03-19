@@ -59,7 +59,7 @@ def load_saved_model(env, model_path, config):
 
 
 def main():
-    render_mode = "human"
+    render_mode = None
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
@@ -84,7 +84,6 @@ def main():
         batch_size=512,
         total_timesteps=200_000_000,
         scenario="games/SuperTennis-Snes/only-rewards_one-set.json",
-        n_envs=2,
     )
 
     if continue_training:

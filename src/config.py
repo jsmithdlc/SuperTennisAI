@@ -1,6 +1,7 @@
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Union
 
+import retro
 import yaml
 
 
@@ -17,6 +18,8 @@ class ExperimentConfig:
     n_steps: int = 512
     n_envs: int = 8
     total_timesteps: int = 100_000_000
+    max_episode_steps: int = 50_000
+    scenario: Union[None, str] = None
 
     # PREPROCESSING steps to be applied to environment
     skip_animations: bool = True

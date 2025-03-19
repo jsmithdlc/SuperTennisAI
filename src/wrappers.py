@@ -290,3 +290,77 @@ class InitialStateSetterWrapper(gym.Wrapper):
         sampled_state = str(sampled_state)
         self.unwrapped.load_state(sampled_state, retro.data.Integrations.ALL)
         return super().reset(seed=self.random_seed, options=options)
+
+
+# Discretizer from https://github.com/openai/retro/blob/master/retro/examples/discretizer.py#L9
+class Discretizer(gym.ActionWrapper):
+    """
+    Wrap a gym environment and make it use discrete actions.
+
+    Args:
+        combos: ordered list of lists of valid button combinations
+    """
+
+    def __init__(self, env, combos):
+        super().__init__(env)
+        assert isinstance(env.action_space, gym.spaces.MultiBinary)
+        buttons = env.unwrapped.buttons
+        self._decode_discrete_action = []
+        for combo in combos:
+            arr = np.array([False] * env.action_space.n)
+            for button in combo:
+                arr[buttons.index(button)] = True
+            self._decode_discrete_action.append(arr)
+
+        self.action_space = gym.spaces.Discrete(len(self._decode_discrete_action))
+
+    def action(self, act):
+        return self._decode_discrete_action[act].copy()
+
+
+class SuperTennisDiscretizer(Discretizer):
+    """
+    Use SuperTennis specific actions
+    based on https://www.retrogames.cz/manualy/SNES/Super_Tennis_-_Manual_-_SNES.pdf and experience playing
+    """
+
+    def __init__(self, env):
+        shot_options = [["A"], ["B"], ["Y"], ["X"]]
+        dir_options = [
+            ["UP"],
+            ["DOWN"],
+            ["LEFT"],
+            ["RIGHT"],
+            ["LEFT", "DOWN"],
+            ["LEFT", "UP"],
+            ["RIGHT", "DOWN"],
+            ["RIGHT", "UP"],
+        ]
+        combos = shot_options + dir_options
+        combos += self._create_shot_combos(dir_options, shot_options)
+        super().__init__(
+            env=env,
+            combos=combos,
+        )
+
+    def _create_shot_combos(self, directions, shots):
+        dir_shot_combos = []
+        spins = [["L"], ["R"]]
+        for d in directions:
+            for shot in shots:
+                # shots with direction
+                dir_shot_combos.append(d + shot)
+                # shots with direction and spin
+                for spin in spins:
+                    dir_shot_combos.append(d + shot + spin)
+            # only direction and spin
+            for spin in spins:
+                dir_shot_combos.append(d + spin)
+        # shots without direction but with spin
+        for shot in shots:
+            for spin in spins:
+                dir_shot_combos.append(shot + spin)
+        # only spin
+        for spin in spins:
+            dir_shot_combos.append(spin)
+        return dir_shot_combos

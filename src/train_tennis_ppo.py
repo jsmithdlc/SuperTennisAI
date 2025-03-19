@@ -59,7 +59,7 @@ def load_saved_model(env, model_path, config):
 
 
 def main():
-    render_mode = None
+    render_mode = "human"
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
@@ -67,20 +67,24 @@ def main():
     saved_model_path = None
     exp_prefix = "ppo_st_multi_states"
 
-    scenario = None
-    max_episode_steps = 5e4
-
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
     os.makedirs(os.path.join("logs", logname))
 
     # initialize configuration
     config = PPOConfig(
+        clip_range=0.2,
         n_skip=4,
         sticky_prob=0.25,
         skip_animations=True,
         clip_rewards=True,
-        fault_penalty=0.5,
+        stall_penalty=1,
+        fault_penalty=1,
         ball_return_reward=0.5,
+        n_steps=256,
+        batch_size=512,
+        total_timesteps=200_000_000,
+        scenario="games/SuperTennis-Snes/only-rewards_one-set.json",
+        n_envs=2,
     )
 
     if continue_training:
@@ -97,9 +101,9 @@ def main():
             env = make_retro(
                 game=game,
                 states=env_states,
-                scenario=scenario,
+                scenario=config.scenario,
                 render_mode=render_mode,
-                max_episode_steps=max_episode_steps,
+                max_episode_steps=config.max_episode_steps,
                 seed=config.seed,
             )
             env = wrap_deepmind_retro(env, config)

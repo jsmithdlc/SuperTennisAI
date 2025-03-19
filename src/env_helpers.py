@@ -16,6 +16,7 @@ from src.wrappers import (
     SkipAnimationsWrapper,
     StallPenaltyWrapper,
     StickyActionWrapper,
+    SuperTennisDiscretizer,
 )
 
 
@@ -32,6 +33,7 @@ def make_retro(*, game, states, max_episode_steps=4500, seed=None, **kwargs):
     env = retro.make(
         game, retro.State.DEFAULT, inttype=retro.data.Integrations.ALL, **kwargs
     )
+    env = SuperTennisDiscretizer(env)
     env = InitialStateSetterWrapper(env, states=states, seed=seed)
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)

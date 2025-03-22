@@ -56,7 +56,7 @@ def main():
     render_mode = "human"
     logname = "logs/ppo_st_multi_states_19_03_2025__09_42_02"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_77000000_steps.zip"
+    model_path = f"{logname}/checkpoints/best_model.zip"
     video_path = os.path.join(logname, "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 

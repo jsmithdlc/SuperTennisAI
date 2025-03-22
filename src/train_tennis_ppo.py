@@ -59,20 +59,23 @@ def load_saved_model(env, model_path, config):
 
 
 def main():
-    render_mode = None
+    render_mode = "human"
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
     continue_training = False
-    saved_model_path = None
-    exp_prefix = "ppo_st_multi_states"
+    saved_model_path = (
+        "logs/ppo_st_multi_states_19_03_2025__09_42_02/checkpoints/best_model.zip"
+    )
+    exp_prefix = "ppo_multi_states_ballreturn_pretrain"
 
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
     os.makedirs(os.path.join("logs", logname))
 
     # initialize configuration
     config = PPOConfig(
-        clip_range=0.2,
+        initial_lr=1e-4,
+        clip_range=0.1,
         n_skip=4,
         sticky_prob=0.25,
         skip_animations=False,
@@ -83,7 +86,7 @@ def main():
         n_steps=256,
         batch_size=512,
         total_timesteps=200_000_000,
-        scenario="games/SuperTennis-Snes/only-rewards_one-set.json",
+        scenario="games/SuperTennis-Snes/scenario.json",
     )
 
     if continue_training:

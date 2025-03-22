@@ -75,17 +75,17 @@ class StallPenaltyWrapper(gym.Wrapper):
     stalling_values = {1, 17}
     episode_stall_varname = "stall_count"
 
-    def __init__(
-        self, env, penalty=1, base_steps=60, steps_till_penalty=80, skipped_frames=4
-    ):
+    def __init__(self, env, penalty=1, base_steps=60, skipped_frames=4):
         super(StallPenaltyWrapper, self).__init__(env)
         self.penalty = penalty
+        self._n_skip = skipped_frames
         # must divide by skipped frames to get back to real time
-        self.steps_till_penalty = (steps_till_penalty) // skipped_frames
+        self.frames_till_penalty = 360 // self._n_skip
         self.in_serving_state = False
-        # account for some time spent "in-serving" but agent cannot perform action
-        self.base_steps = -base_steps // skipped_frames
-        self.step_counter = self.base_steps
+        # account for some time spent "in-serving" where agent cannot perform action
+        # due to text display, etc
+        self.base_frames = -base_steps // self._n_skip
+        self.frame_counter = self.base_frames
         self.ep_stall_count = 0
 
     def _evaluate_if_serving(self, info):
@@ -117,12 +117,18 @@ class StallPenaltyWrapper(gym.Wrapper):
                 necessary serving.
         """
         if is_serving and not self.in_serving_state:
-            self.step_counter = self.base_steps
+            self.frame_counter = self.base_frames
             self.in_serving_state = True
+            # frames till penalty is reset to wait for first stall
+            self.frames_till_penalty = 360 // self._n_skip
         elif is_serving and self.in_serving_state:
-            self.step_counter += 1
-            if self.step_counter >= self.steps_till_penalty:
-                self.step_counter = 0  # we reset to 0
+            self.frame_counter += 1
+            if self.frame_counter >= self.frames_till_penalty:
+                # counter is reset to 0 and steps till penalty
+                # reduced to 80 to penalize repeated stalling more
+                # quickly
+                self.frame_counter = 0
+                self.frames_till_penalty = 80 // self._n_skip
                 print("Penalizing agent for stalling")
                 self.ep_stall_count += 1
                 return reward - self.penalty

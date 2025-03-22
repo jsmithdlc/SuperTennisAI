@@ -5,7 +5,7 @@ import retro
 # add custom game integration folder path to retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 
-import gymnasium
+import gymnasium as gym
 from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecFrameStack,
@@ -21,12 +21,12 @@ MAX_EPISODE_STEPS = None
 VIDEO_LENGTH = 10000
 
 
-def run_episode(model, env):
+def run_episode(model, env: gym.Env):
     episode_over = False
     obs = env.reset()
     tot_reward = 0.0
     while not episode_over:
-        action, _ = model.predict(obs, deterministic=False)
+        action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, info = env.step(action)
         tot_reward += reward[0]
         episode_over = terminated
@@ -34,7 +34,7 @@ def run_episode(model, env):
     env.close()
 
 
-def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
+def record_game(model, env: gym.Env, video_path, video_length=1000):
     # wrap around video recorder
     video_env = VecVideoRecorder(
         env,
@@ -49,15 +49,15 @@ def record_game(model, env: gymnasium.Env, video_path, video_length=1000):
 def main():
     game = "SuperTennis-Snes"
     states = [
-        "working_init_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsDonna.1-set.Hard.state"
+        "working_init_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsRob.1-set.Hard.state"
     ]
 
-    scenario = None
+    scenario = "games/SuperTennis-Snes/only-rewards_one-set.json"
     render_mode = "human"
-    logname = "logs/ppo_st_multi_states_14_03_2025__18_58_44"
+    logname = "logs/ppo_st_multi_states_19_03_2025__09_42_02"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_75000000_steps.zip"
-    video_path = os.path.join(logname, "./logs", "videos")
+    model_path = f"{logname}/checkpoints/ppo_supertennis_77000000_steps.zip"
+    video_path = os.path.join(logname, "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 
     def make_env():

@@ -75,7 +75,7 @@ def main():
         clip_range=0.2,
         n_skip=4,
         sticky_prob=0.25,
-        skip_animations=True,
+        skip_animations=False,
         clip_rewards=True,
         stall_penalty=1,
         fault_penalty=1,

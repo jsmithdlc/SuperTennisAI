@@ -23,7 +23,7 @@ class ExperimentConfig:
 
     # PREPROCESSING steps to be applied to environment
     skip_animations: bool = True
-    clip_rewards: bool = True
+    clip_rewards: bool = True  # when reward scale matters, this should be set to False.
     sticky_prob: float = 0.25
     n_skip: int = 4
 

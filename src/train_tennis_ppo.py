@@ -59,7 +59,7 @@ def load_saved_model(env, model_path, config):
 
 
 def main():
-    render_mode = "human"
+    render_mode = None
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
@@ -79,7 +79,7 @@ def main():
         n_skip=4,
         sticky_prob=0.25,
         skip_animations=False,
-        clip_rewards=True,
+        clip_rewards=False,
         stall_penalty=1,
         fault_penalty=1,
         ball_return_reward=0.5,

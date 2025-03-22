@@ -1,4 +1,5 @@
 import os
+import pprint
 from collections import deque
 
 import gymnasium as gym
@@ -42,8 +43,8 @@ class HParamCallback(BaseCallback):
         return True
 
 
-class LogExtraMetricsCallback(BaseCallback):
-    """Used for logging additional metrics, from the `info` dictionary
+class LogExtraEpisodeStatsCallback(BaseCallback):
+    """Used for logging additional episode stats, from the `info` dictionary
     returned at each step, onto the training logger.
 
     Attributes:
@@ -70,11 +71,15 @@ class LogExtraMetricsCallback(BaseCallback):
 
     def _update_extra_buffers(self):
         """Adds values to buffers if found in info dictionary"""
-        for info in self.locals["infos"]:
+        for env_id, info in enumerate(self.locals["infos"]):
+            if not self.locals["dones"][env_id]:
+                continue
             for metric_name in self._extra_buffers:
                 val = info.get(metric_name)
                 if val is None:
-                    continue
+                    raise ValueError(
+                        f"Missing metric: {metric_name} from info at episode termination"
+                    )
                 self._extra_buffers[metric_name].append(val)
 
     def _dump_extra_metrics(self):
@@ -119,8 +124,15 @@ def initialize_callbacks(
         save_path=os.path.join("./logs", logname, "checkpoints"),
         name_prefix="ppo_supertennis",
     )
-    extra_metric_logger = LogExtraMetricsCallback(
-        ["faults", "stall_count", "ball_returns"],
+    extra_metric_logger = LogExtraEpisodeStatsCallback(
+        [
+            "faults",
+            "stall_count",
+            "ball_returns",
+            "player_points",
+            "opponent_points",
+            "aces",
+        ],
         log_freq=config.log_interval * config.n_steps * config.n_envs,
         stats_window_size=config.stats_window_size,
     )

@@ -47,6 +47,8 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
     """Used for logging additional episode stats, from the `info` dictionary
     returned at each step, onto the training logger.
 
+    By default always logs ratio of points won and ratio of aces
+
     Attributes:
         extra_metric_names (list[str]): names of the metrics, as found in the
         `info` dictionaries, to log
@@ -68,12 +70,26 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
         self._extra_buffers = {
             name: deque(maxlen=stats_window_size) for name in extra_metric_names
         }
+        # buggers for % points won, % aces
+        self._points_buffer = {
+            "points_won_ratio": deque(maxlen=stats_window_size),
+            "aces_ratio": deque(maxlen=stats_window_size),
+            "total_points": deque(maxlen=stats_window_size),
+        }
 
-    def _update_extra_buffers(self):
+    def _update_stats_buffers(self):
         """Adds values to buffers if found in info dictionary"""
         for env_id, info in enumerate(self.locals["infos"]):
             if not self.locals["dones"][env_id]:
                 continue
+            # log % points won, % aces
+            total_points = info["player_points"] + info["opponent_points"]
+            self._points_buffer["total_points"].append(total_points)
+            self._points_buffer["points_won_ratio"].append(
+                info["player_points"] / total_points
+            )
+            self._points_buffer["aces_ratio"].append(info["aces"] / total_points)
+            # log extra metrics
             for metric_name in self._extra_buffers:
                 val = info.get(metric_name)
                 if val is None:
@@ -82,18 +98,23 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
                     )
                 self._extra_buffers[metric_name].append(val)
 
-    def _dump_extra_metrics(self):
+    def _dump_episode_stats(self):
         """Records the mean of each metric, where available, into the logger"""
         for name in self._extra_buffers:
             if len(self._extra_buffers[name]) > 0:
                 self.logger.record(
                     f"rollout/{name}", safe_mean(self._extra_buffers[name])
                 )
+        for name in self._points_buffer:
+            if len(self._points_buffer[name]) > 0:
+                self.logger.record(
+                    f"rollout/{name}", safe_mean(self._points_buffer[name])
+                )
 
     def _on_step(self) -> bool:
-        self._update_extra_buffers()
+        self._update_stats_buffers()
         if self.num_timesteps % self.log_freq == 0:
-            self._dump_extra_metrics()
+            self._dump_episode_stats()
         return True
 
 
@@ -125,14 +146,7 @@ def initialize_callbacks(
         name_prefix="ppo_supertennis",
     )
     extra_metric_logger = LogExtraEpisodeStatsCallback(
-        [
-            "faults",
-            "stall_count",
-            "ball_returns",
-            "player_points",
-            "opponent_points",
-            "aces",
-        ],
+        ["faults", "stall_count", "ball_returns"],
         log_freq=config.log_interval * config.n_steps * config.n_envs,
         stats_window_size=config.stats_window_size,
     )

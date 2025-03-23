@@ -74,15 +74,15 @@ def main():
 
     # initialize configuration
     config = PPOConfig(
-        initial_lr=1e-4,
+        initial_lr=5e-5,
         clip_range=0.1,
         n_skip=4,
         sticky_prob=0.25,
         skip_animations=False,
-        clip_rewards=False,
+        clip_rewards=True,
         stall_penalty=1,
         fault_penalty=1,
-        ball_return_reward=0.5,
+        ball_return_reward=0,
         n_steps=256,
         batch_size=512,
         total_timesteps=200_000_000,

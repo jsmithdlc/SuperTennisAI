@@ -1,3 +1,4 @@
+import math
 import os
 import pprint
 from collections import deque
@@ -85,6 +86,8 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
             # log % points won, % aces
             total_points = info["player_points"] + info["opponent_points"]
             self._points_buffer["total_points"].append(total_points)
+            # avoid zero-division
+            total_points = math.inf if total_points == 0 else total_points
             self._points_buffer["points_won_ratio"].append(
                 info["player_points"] / total_points
             )

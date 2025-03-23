@@ -31,7 +31,7 @@ from src.env_helpers import (
 
 def create_logname(saved_model_path, continue_training, prefix="ppo_super_tennis"):
     if saved_model_path is not None and continue_training:
-        return os.path.basename(os.path.dirname(saved_model_path))
+        return saved_model_path.split("/")[-3]
     return f"{prefix}_{datetime.now().strftime('%d_%m_%Y__%H_%M_%S')}"
 
 
@@ -49,8 +49,12 @@ def initialize_model(env, config: PPOConfig):
     return model
 
 
-def load_saved_model(env, model_path, config):
+def load_saved_model(env, model_path, config, continue_training):
     print(f"Load saved model from path: {model_path}")
+    if continue_training:
+        model = PPO.load(model_path)
+        model.set_env(env)
+        return model
     saved_model = PPO.load(model_path, env=env)
     model = initialize_model(env, config)
     model.policy.load_state_dict(saved_model.policy.state_dict())
@@ -63,19 +67,19 @@ def main():
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
-    continue_training = False
-    saved_model_path = (
-        "logs/ppo_st_multi_states_19_03_2025__09_42_02/checkpoints/best_model.zip"
-    )
+    continue_training = True
+    saved_model_path = "logs/ppo_multi_states_ballreturn_pretrain_23_03_2025__10_42_12/checkpoints/ppo_supertennis_12000000_steps.zip"
     exp_prefix = "ppo_multi_states_ballreturn_pretrain"
 
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
-    os.makedirs(os.path.join("logs", logname))
+    os.makedirs(os.path.join("logs", logname), exist_ok=True)
 
     # initialize configuration
     config = PPOConfig(
-        initial_lr=5e-5,
+        gamma=0.99,
+        initial_lr=1e-4,
         clip_range=0.1,
+        ent_coef=0.005,
         n_skip=4,
         sticky_prob=0.25,
         skip_animations=False,
@@ -133,7 +137,7 @@ def main():
     callbacks = initialize_callbacks(eval_venv, config, logname)
 
     if saved_model_path is not None:
-        model = load_saved_model(venv, saved_model_path, config)
+        model = load_saved_model(venv, saved_model_path, config, continue_training)
     else:
         model = initialize_model(venv, config)
 

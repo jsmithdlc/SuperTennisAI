@@ -290,12 +290,19 @@ class InitialStateSetterWrapper(gym.Wrapper):
         self.random_seed = seed
         self.rng = np.random.default_rng(seed)
         self.initial_states = states
+        self._sampled_state = None
 
     def reset(self, seed=None, options=None):
         sampled_state = self.rng.choice(self.initial_states, 1)[0]
         sampled_state = str(sampled_state)
+        self._sampled_state = sampled_state
         self.unwrapped.load_state(sampled_state, retro.data.Integrations.ALL)
         return super().reset(seed=self.random_seed, options=options)
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        info["initial_state"] = self._sampled_state
+        return obs, rew, terminated, truncated, info
 
 
 # Discretizer from https://github.com/openai/retro/blob/master/retro/examples/discretizer.py#L9

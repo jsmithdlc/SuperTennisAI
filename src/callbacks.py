@@ -2,6 +2,7 @@ import math
 import os
 import pprint
 from collections import deque
+from typing import Any
 
 import gymnasium as gym
 from stable_baselines3.common.callbacks import (
@@ -71,35 +72,68 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
         self._extra_buffers = {
             name: deque(maxlen=stats_window_size) for name in extra_metric_names
         }
-        # buggers for % points won, % aces
+        # buffers for % points won, % aces
         self._points_buffer = {
             "points_won_ratio": deque(maxlen=stats_window_size),
             "aces_ratio": deque(maxlen=stats_window_size),
             "total_points": deque(maxlen=stats_window_size),
         }
+        # buffers for fine-grained stats per court type
+        self._court_type_buffers = {
+            court_type: {
+                "points_won_ratio": deque(maxlen=stats_window_size),
+                "aces_ratio": deque(maxlen=stats_window_size),
+                "stall_count": deque(maxlen=stats_window_size),
+                "ball_returns": deque(maxlen=stats_window_size),
+                "faults": deque(maxlen=stats_window_size),
+            }
+            for court_type in ("Clay", "Hard", "Lawn")
+        }
+
+    def _extract_court_type(self, info: dict[str, Any]) -> str:
+        return info["initial_state"].split(".")[-2]
+
+    def _update_env_points_stats(self, info: dict[str, Any]):
+        # log % points won, % aces
+        total_points = info["player_points"] + info["opponent_points"]
+        self._points_buffer["total_points"].append(total_points)
+        # avoid zero-division
+        total_points = math.inf if total_points == 0 else total_points
+        points_won_ratio = info["player_points"] / total_points
+        aces_ratio = info["aces"] / total_points
+
+        # update general buffer
+        self._points_buffer["points_won_ratio"].append(points_won_ratio)
+        self._points_buffer["aces_ratio"].append(aces_ratio)
+
+        # update per-court-type buffer
+        court_type = self._extract_court_type(info)
+        self._court_type_buffers[court_type]["points_won_ratio"].append(
+            points_won_ratio
+        )
+        self._court_type_buffers[court_type]["aces_ratio"].append(aces_ratio)
+
+    def _update_extra_buffers(self, info: dict[str, Any]):
+        # log extra metrics
+        for metric_name in self._extra_buffers:
+            val = info.get(metric_name)
+            self._extra_buffers[metric_name].append(val)
+
+        court_type = self._extract_court_type(info)
+        self._court_type_buffers[court_type]["ball_returns"].append(
+            info["ball_returns"]
+        )
+        self._court_type_buffers[court_type]["stall_count"].append(info["stall_count"])
+        self._court_type_buffers[court_type]["faults"].append(info["faults"])
 
     def _update_stats_buffers(self):
         """Adds values to buffers if found in info dictionary"""
         for env_id, info in enumerate(self.locals["infos"]):
             if not self.locals["dones"][env_id]:
                 continue
-            # log % points won, % aces
-            total_points = info["player_points"] + info["opponent_points"]
-            self._points_buffer["total_points"].append(total_points)
-            # avoid zero-division
-            total_points = math.inf if total_points == 0 else total_points
-            self._points_buffer["points_won_ratio"].append(
-                info["player_points"] / total_points
-            )
-            self._points_buffer["aces_ratio"].append(info["aces"] / total_points)
+            self._update_env_points_stats(info)
             # log extra metrics
-            for metric_name in self._extra_buffers:
-                val = info.get(metric_name)
-                if val is None:
-                    raise ValueError(
-                        f"Missing metric: {metric_name} from info at episode termination"
-                    )
-                self._extra_buffers[metric_name].append(val)
+            self._update_extra_buffers(info)
 
     def _dump_episode_stats(self):
         """Records the mean of each metric, where available, into the logger"""
@@ -113,6 +147,16 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
                 self.logger.record(
                     f"rollout/{name}", safe_mean(self._points_buffer[name])
                 )
+
+        for court in self._court_type_buffers:
+            court_buffer = self._court_type_buffers[court]
+            for metric_name in court_buffer:
+                if len(court_buffer[metric_name]) > 0:
+                    self.logger.record(
+                        f"rollout-{court.lower()}/{metric_name}",
+                        safe_mean(court_buffer[metric_name]),
+                        exclude=["stdout", "log"],
+                    )
 
     def _on_step(self) -> bool:
         self._update_stats_buffers()

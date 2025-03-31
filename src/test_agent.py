@@ -49,14 +49,14 @@ def record_game(model, env: gym.Env, video_path, video_length=1000):
 def main():
     game = "SuperTennis-Snes"
     states = [
-        "working_init_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsRob.1-set.Hard.state"
+        "all_initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsRich.1-set.Clay.state"
     ]
 
-    scenario = "games/SuperTennis-Snes/only-rewards_one-set.json"
+    scenario = "games/SuperTennis-Snes/scenario.json"
     render_mode = "human"
-    logname = "logs/ppo_st_multi_states_19_03_2025__09_42_02"
+    logname = "logs/ppo_multi_states_foster_strategy_24_03_2025__21_33_53"
 
-    model_path = f"{logname}/checkpoints/best_model.zip"
+    model_path = f"{logname}/checkpoints/ppo_supertennis_98000000_steps.zip"
     video_path = os.path.join(logname, "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 

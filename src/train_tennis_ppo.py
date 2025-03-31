@@ -27,6 +27,7 @@ from src.env_helpers import (
     split_initial_states,
     wrap_deepmind_retro,
 )
+from src.networks.residual_extractor import ResidualCNN
 
 
 def create_logname(saved_model_path, continue_training, prefix="ppo_super_tennis"):
@@ -67,30 +68,28 @@ def main():
     game = "SuperTennis-Snes"
     states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
 
-    continue_training = True
-    saved_model_path = "logs/ppo_multi_states_ballreturn_pretrain_23_03_2025__10_42_12/checkpoints/ppo_supertennis_12000000_steps.zip"
-    exp_prefix = "ppo_multi_states_ballreturn_pretrain"
+    continue_training = False
+    saved_model_path = None
+    exp_prefix = "ppo_multi_states_large_network"
 
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
     os.makedirs(os.path.join("logs", logname), exist_ok=True)
 
     # initialize configuration
     config = PPOConfig(
-        gamma=0.99,
-        initial_lr=1e-4,
-        clip_range=0.1,
-        ent_coef=0.005,
-        n_skip=4,
-        sticky_prob=0.25,
-        skip_animations=False,
-        clip_rewards=True,
-        stall_penalty=1,
-        fault_penalty=1,
-        ball_return_reward=0,
-        n_steps=256,
-        batch_size=512,
+        clip_range=0.2,
+        clip_rewards=False,
+        stall_penalty=0.5,
+        fault_penalty=0.5,
+        ball_return_reward=0.2,
+        n_steps=512,
+        batch_size=128,
         total_timesteps=200_000_000,
+        stats_window_size=32,
         scenario="games/SuperTennis-Snes/scenario.json",
+        features_extractor_class="ResidualCNN",
+        features_extractor_dim=1024,
+        features_extractor_dropout=0.1,
     )
 
     if continue_training:
@@ -130,7 +129,7 @@ def main():
         VecFrameStack(
             SubprocVecEnv([make_env_wrapper(states)]),
             n_stack=4,
-        )
+        ),
     )
 
     # additional callbacks

@@ -1,8 +1,11 @@
 from dataclasses import asdict, dataclass
-from typing import Any, Union
+from typing import Any, Literal, Union
 
 import retro
+import torch.nn as nn
 import yaml
+
+from src.networks.residual_extractor import ResidualCNN
 
 
 @dataclass
@@ -22,7 +25,7 @@ class ExperimentConfig:
     scenario: Union[None, str] = None
 
     # PREPROCESSING steps to be applied to environment
-    skip_animations: bool = True
+    skip_animations: bool = False
     clip_rewards: bool = True  # when reward scale matters, this should be set to False.
     sticky_prob: float = 0.25
     n_skip: int = 4
@@ -60,6 +63,9 @@ class PPOConfig(ExperimentConfig):
     gae_lambda: float = 0.95
     max_grad_norm: float = 0.5
     vf_coef: float = 0.5
+    features_extractor_class: Literal["NatureCNN", "ResidualCNN"] = "NatureCNN"
+    features_extractor_dim: int = 1024
+    features_extractor_dropout: float = 0.1
 
     def get_policy_params(self) -> dict[str, Any]:
         base_params = super().get_policy_params()
@@ -72,7 +78,29 @@ class PPOConfig(ExperimentConfig):
                 "vf_coef": self.vf_coef,
             }
         )
+        if self.features_extractor_class != "NatureCNN":
+            base_params.update(
+                {
+                    "policy_kwargs": {
+                        "features_extractor_class": self._get_feature_extractor_class(
+                            self.features_extractor_class
+                        ),
+                        "features_extractor_kwargs": {
+                            "dropout": self.features_extractor_dropout,
+                            "features_dim": self.features_extractor_dim,
+                        },
+                    }
+                }
+            )
         return base_params
+
+    def _get_feature_extractor_class(self, name: str) -> type:
+        if name == "ResidualCNN":
+            return ResidualCNN
+        else:
+            raise NotImplementedError(
+                f"Features extractor for: {name} not yet implemented"
+            )
 
 
 def save_to_yaml(config: ExperimentConfig, filepath: str):

@@ -77,6 +77,7 @@ def main():
 
     # initialize configuration
     config = PPOConfig(
+        n_envs=12,
         clip_range=0.2,
         clip_rewards=False,
         stall_penalty=0.5,

@@ -42,6 +42,7 @@ def initialize_model(env, config: PPOConfig):
         tensorboard_log="./logs/",
         env=env,
         learning_rate=lambda f: f * config.initial_lr,
+        clip_range=lambda f: f * config.clip_range,
         verbose=1,
         seed=config.seed,
         stats_window_size=config.stats_window_size,
@@ -66,7 +67,9 @@ def load_saved_model(env, model_path, config, continue_training):
 def main():
     render_mode = None
     game = "SuperTennis-Snes"
-    states = read_statenames_from_folder("games/SuperTennis-Snes/working_init_states")
+    states = read_statenames_from_folder(
+        "games/SuperTennis-Snes/hard-court_easy-opponents_states"
+    )
 
     continue_training = False
     saved_model_path = None
@@ -77,20 +80,21 @@ def main():
 
     # initialize configuration
     config = PPOConfig(
-        n_envs=12,
+        n_envs=8,
         clip_range=0.2,
+        ent_coef=0.01,
         clip_rewards=False,
         stall_penalty=0.5,
         fault_penalty=0.5,
         ball_return_reward=0.2,
-        n_steps=512,
-        batch_size=128,
-        total_timesteps=200_000_000,
+        n_steps=256,
+        batch_size=1024,
+        total_timesteps=400_000_000,
         stats_window_size=32,
         scenario="games/SuperTennis-Snes/scenario.json",
         features_extractor_class="ResidualCNN",
-        features_extractor_dim=1024,
-        features_extractor_dropout=0.1,
+        features_extractor_dim=512,
+        features_extractor_dropout=0.0,
     )
 
     if continue_training:

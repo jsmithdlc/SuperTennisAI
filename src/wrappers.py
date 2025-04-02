@@ -349,7 +349,7 @@ class SuperTennisDiscretizer(Discretizer):
             ["RIGHT", "DOWN"],
             ["RIGHT", "UP"],
         ]
-        combos = shot_options + dir_options
+        combos = [[]] + shot_options + dir_options  # includes no-op
         combos += self._create_shot_combos(dir_options, shot_options)
         super().__init__(
             env=env,

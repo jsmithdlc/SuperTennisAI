@@ -71,7 +71,6 @@ class PPOConfig(ExperimentConfig):
         base_params = super().get_policy_params()
         base_params.update(
             {
-                "clip_range": self.clip_range,
                 "ent_coef": self.ent_coef,
                 "gae_lambda": self.gae_lambda,
                 "max_grad_norm": self.max_grad_norm,

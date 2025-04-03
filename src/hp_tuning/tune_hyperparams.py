@@ -108,8 +108,8 @@ def objective(trial: optuna.Trial) -> float:
         verbose=0,
         seed=config.seed,
         tensorboard_log=trial_path,
-        learning_rate=lambda f: f * config.initial_lr,
-        clip_range=lambda f: f * config.clip_range,
+        learning_rate=config.initial_lr,
+        clip_range=config.clip_range,
         stats_window_size=config.stats_window_size,
         **config.get_policy_params(),
     )

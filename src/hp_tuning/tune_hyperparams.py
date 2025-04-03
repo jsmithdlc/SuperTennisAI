@@ -70,6 +70,10 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
         "n_epochs": n_epochs,
         "features_extractor_class": "ImpalaCNN",
         "features_extractor_dim": features_extractor_dim,
+        "clip_rewards": False,
+        "stall_penalty": 0.5,
+        "fault_penalty": 0.5,
+        "ball_return_reward": 0.2,
     }
 
 

@@ -1,5 +1,5 @@
 """
-Script based on https://github.com/optuna/optuna-examples/blob/main/rl/sb3_simple.py, which is based on 
+Script based on https://github.com/optuna/optuna-examples/blob/main/rl/sb3_simple.py, which is based on
 https://github.com/DLR-RM/rl-baselines3-zoo
 
 """
@@ -11,40 +11,29 @@ import retro
 # add custom game integration folder path to retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 
-import json
 from typing import Any
 
-import gymnasium
 import optuna
-import torch
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
-from stable_baselines3.common.callbacks import EvalCallback
-from stable_baselines3.common.vec_env import (
-    SubprocVecEnv,
-    VecFrameStack,
-    VecTransposeImage,
-)
 from stable_baselines3.ppo import PPO
-from torch import nn
 
 from src.callbacks import HParamCallback
-from src.env_helpers import make_retro, wrap_deepmind_retro
+from src.config import PPOConfig, save_to_yaml
+from src.env_helpers import (
+    create_vectorized_env,
+    read_statenames_from_folder,
+    split_initial_states,
+)
 from src.hp_tuning.optuna_utils import TrialEvalCallback
 
 N_TRIALS = 100
-N_STARTUP_TRIALS = 5
-N_EVALUATIONS = 4
-N_TIMESTEPS = int(2e6)
-N_ENVS = 8
-STARTING_STATE = "SuperTennis.Singles.MattvsBarb.1-set.Hard"
+N_STARTUP_TRIALS = 10
+N_EVALUATIONS = 8
 LOGS_PATH = "./logs/optuna"
+N_TIMESTEPS = 2_000_000
 EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
-N_EVAL_EPISODES = 3
-TIMEOUT_S = 60 * 60 * 24  # stop optuna study after this number of seconds
-
-
-DEFAULT_HYPERPARAMS = {"policy": "CnnPolicy"}
+N_EVAL_EPISODES = 4
 
 
 def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
@@ -54,43 +43,21 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
     :param trial:
     :return:
     """
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512])
+    batch_size = trial.suggest_categorical("batch_size", [128, 256, 512, 1024, 2048])
     n_steps = trial.suggest_categorical("n_steps", [128, 256, 512, 1024, 2048])
-    gamma = trial.suggest_categorical(
-        "gamma", [0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999]
-    )
+    gamma = trial.suggest_categorical("gamma", [0.98, 0.99, 0.995])
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
     ent_coef = trial.suggest_float("ent_coef", 0.00001, 0.1, log=True)
     clip_range = trial.suggest_categorical("clip_range", [0.1, 0.2, 0.3, 0.4])
-    n_epochs = trial.suggest_categorical("n_epochs", [1, 5, 10, 20])
-    gae_lambda = trial.suggest_categorical(
-        "gae_lambda", [0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0]
-    )
-    max_grad_norm = trial.suggest_categorical(
-        "max_grad_norm", [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 5]
-    )
     vf_coef = trial.suggest_float("vf_coef", 0, 1)
-    net_arch_type = trial.suggest_categorical("net_arch", ["tiny", "small", "medium"])
-    # net_arch_type = "medium"
-    # Orthogonal initialization
-    # activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
-    # lr_schedule = "constant"
-    # Uncomment to enable learning rate schedule
-    # lr_schedule = trial.suggest_categorical('lr_schedule', ['linear', 'constant'])
-    # if lr_schedule == "linear":
-    #     learning_rate = linear_schedule(learning_rate)
+    n_epochs = trial.suggest_categorical("n_epochs", [1, 5, 10, 20])
+    features_extractor_dim = trial.suggest_categorical(
+        "features_extractor_dim", [128, 256]
+    )
 
     # TODO: account when using multiple envs
-    if batch_size > n_steps:
+    if batch_size > n_steps * 8:
         batch_size = n_steps
-
-    # Independent networks usually work best
-    # when not working with images
-    net_arch = {
-        "tiny": dict(pi=[64], vf=[64]),
-        "small": dict(pi=[64, 64], vf=[64, 64]),
-        "medium": dict(pi=[256, 256], vf=[256, 256]),
-    }[net_arch_type]
 
     return {
         "n_steps": n_steps,
@@ -99,37 +66,30 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
         "learning_rate": learning_rate,
         "ent_coef": ent_coef,
         "clip_range": clip_range,
-        "n_epochs": n_epochs,
-        "gae_lambda": gae_lambda,
-        "max_grad_norm": max_grad_norm,
         "vf_coef": vf_coef,
-        # "sde_sample_freq": sde_sample_freq,
-        "policy_kwargs": dict(
-            # log_std_init=log_std_init,
-            net_arch=net_arch
-        ),
+        "n_epochs": n_epochs,
+        "features_extractor_class": "ImpalaCNN",
+        "features_extractor_dim": features_extractor_dim,
     }
 
 
-def make_supertennis_env():
-    env = make_retro(
-        game="SuperTennis-Snes", state=STARTING_STATE, scenario=None, render_mode=None
-    )
-    env = wrap_deepmind_retro(env)
-    return env
-
-
 def objective(trial: optuna.Trial) -> float:
-    kwargs = DEFAULT_HYPERPARAMS.copy()
-    # Sample hyperparameters.
-    kwargs.update(sample_ppo_params(trial))
+    # create config with sampled parameters
+    config = PPOConfig(**sample_ppo_params(trial))
+
+    # initial_states
+    states = read_statenames_from_folder(
+        "games/SuperTennis-Snes/hard-court_easy-opponents_states"
+    )
+    state_splits = split_initial_states(states, config.n_envs)
 
     # create training and evaluation environments
-    env = VecTransposeImage(
-        VecFrameStack(SubprocVecEnv([make_supertennis_env] * N_ENVS), n_stack=4)
+    # create training and evaluation environments
+    venv = create_vectorized_env(
+        config, state_splits, render_mode=None, training=True, loop_states=False
     )
-    eval_env = VecTransposeImage(
-        VecFrameStack(SubprocVecEnv([make_supertennis_env]), n_stack=4)
+    eval_venv = create_vectorized_env(
+        config, [states], render_mode=None, training=False, loop_states=True
     )
 
     trial_path = os.path.join(
@@ -138,21 +98,30 @@ def objective(trial: optuna.Trial) -> float:
     os.makedirs(trial_path, exist_ok=True)
 
     # Create the RL model.
-    model = PPO(env=env, verbose=0, tensorboard_log=trial_path, **kwargs)
+    model = PPO(
+        policy="CnnPolicy",
+        env=venv,
+        verbose=0,
+        seed=config.seed,
+        tensorboard_log=trial_path,
+        learning_rate=lambda f: f * config.initial_lr,
+        clip_range=lambda f: f * config.clip_range,
+        stats_window_size=config.stats_window_size,
+        **config.get_policy_params(),
+    )
 
     # Create the callback that will periodically evaluate and report the performance.
     eval_callback = TrialEvalCallback(
-        eval_env,
+        eval_venv,
         trial,
         best_model_save_path=trial_path,
         log_path=trial_path,
         n_eval_episodes=N_EVAL_EPISODES,
-        eval_freq=(EVAL_FREQ) // N_ENVS,
-        deterministic=True,
+        eval_freq=(EVAL_FREQ) // config.n_envs,
+        deterministic=False,
     )
 
-    with open(os.path.join(trial_path, "params.json"), "w") as f:
-        json.dump(kwargs, f, indent=4)
+    save_to_yaml(config, os.path.join(trial_path, "config.yml"))
 
     nan_encountered = False
     try:
@@ -164,7 +133,6 @@ def objective(trial: optuna.Trial) -> float:
     finally:
         # Free memory.
         model.env.close()
-        eval_env.close()
 
     # Tell the optimizer that the trial failed.
     if nan_encountered:
@@ -175,28 +143,29 @@ def objective(trial: optuna.Trial) -> float:
         raise optuna.exceptions.TrialPruned()
 
     # save the best reward achieved in this trial
-    return eval_callback.best_mean_reward
+    return eval_callback.last_mean_reward
 
 
 if __name__ == "__main__":
-    # Set pytorch num threads to 1 for faster training.
-    torch.set_num_threads(1)
+
+    study_name = "ppo_multistates"
 
     sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS, multivariate=True)
-    # Do not prune before 1/3 of the max budget is used.
-    pruner = MedianPruner(
-        n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3
-    )
+
+    # do not prune until 2 evaluations are done
+    pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=2)
 
     study = optuna.create_study(
-        study_name="ppo_supertennis_tuning_v2",
+        study_name=study_name,
+        storage=f"sqlite:///logs/optuna/{study_name}/study.db",
         sampler=sampler,
         pruner=pruner,
         direction="maximize",
         load_if_exists=True,
+        n_jobs=1,
     )
     try:
-        study.optimize(objective, n_trials=N_TRIALS, timeout=TIMEOUT_S)
+        study.optimize(objective, n_trials=N_TRIALS)
     except KeyboardInterrupt:
         pass
 

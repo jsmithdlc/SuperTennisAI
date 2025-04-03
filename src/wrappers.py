@@ -278,30 +278,42 @@ class SkipAnimationsWrapper(gym.Wrapper):
 
 class InitialStateSetterWrapper(gym.Wrapper):
     """
-    Sets a given initial state at random when environment is reset, from a list of possible states.
+    Sets a given initial state from a list of possible states at reset.
+    Can loop through given states or choose at random.
 
     Param:
         states (list[str]): list of states from where initial state will be sampled at reset
-        seed (int): random seed
+        seed (int): random seed. Defaults to None
+        loop_through_states (bool): if True, will loop through states at each reset
     """
 
-    def __init__(self, env, states, seed: int = None):
+    def __init__(
+        self, env, states, seed: int = None, loop_through_states: bool = False
+    ):
         super(InitialStateSetterWrapper, self).__init__(env)
         self.random_seed = seed
         self.rng = np.random.default_rng(seed)
         self.initial_states = states
-        self._sampled_state = None
+        self._loop_through_states = loop_through_states
+        self._sampled_state_index = 0
 
     def reset(self, seed=None, options=None):
-        sampled_state = self.rng.choice(self.initial_states, 1)[0]
-        sampled_state = str(sampled_state)
-        self._sampled_state = sampled_state
+        self._sampled_state_index = self.rng.integers(
+            low=0, high=len(self.initial_states)
+        )
+        if self._loop_through_states:
+            new_index = self._sampled_state_index + 1
+            self._sampled_state_index = (
+                new_index if new_index < len(self.initial_states) else 0
+            )
+
+        sampled_state = str(self.initial_states[self._sampled_state_index])
         self.unwrapped.load_state(sampled_state, retro.data.Integrations.ALL)
         return super().reset(seed=self.random_seed, options=options)
 
     def step(self, action):
         obs, rew, terminated, truncated, info = self.env.step(action)
-        info["initial_state"] = self._sampled_state
+        info["initial_state"] = self.initial_states[self._sampled_state_index]
         return obs, rew, terminated, truncated, info
 
 

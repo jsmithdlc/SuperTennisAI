@@ -6,16 +6,11 @@ import retro
 retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 
 import gymnasium as gym
-from stable_baselines3.common.vec_env import (
-    SubprocVecEnv,
-    VecFrameStack,
-    VecTransposeImage,
-    VecVideoRecorder,
-)
+from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.ppo import PPO
 
 from src.config import load_from_yaml
-from src.env_helpers import make_retro, wrap_deepmind_retro
+from src.env_helpers import create_vectorized_env
 
 MAX_EPISODE_STEPS = None
 VIDEO_LENGTH = 10000
@@ -47,31 +42,24 @@ def record_game(model, env: gym.Env, video_path, video_length=1000):
 
 
 def main():
-    game = "SuperTennis-Snes"
     states = [
         "all_initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsRich.1-set.Clay.state"
     ]
 
     scenario = "games/SuperTennis-Snes/scenario.json"
     render_mode = "human"
-    logname = "logs/ppo_multi_states_foster_strategy_24_03_2025__21_33_53"
+    logname = "logs/ppo_multi_states_large_network_03_04_2025__07_53_45"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_98000000_steps.zip"
+    model_path = f"{logname}/checkpoints/ppo_supertennis_2000000_steps.zip"
     video_path = os.path.join(logname, "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 
-    def make_env():
-        env = make_retro(
-            game=game,
-            states=states,
-            scenario=scenario,
-            render_mode=render_mode,
-            max_episode_steps=MAX_EPISODE_STEPS,
-        )
-        env = wrap_deepmind_retro(env, config)
-        return env
+    # update config for testing purposes
+    config.scenario = scenario
 
-    venv = VecTransposeImage(VecFrameStack(SubprocVecEnv([make_env]), n_stack=4))
+    venv = create_vectorized_env(
+        config, [states], render_mode, training=False, loop_states=True
+    )
     model = PPO.load(path=model_path, env=venv)
     if render_mode == "rgb_array":
         record_game(model, venv, video_path, video_length=VIDEO_LENGTH)

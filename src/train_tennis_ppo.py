@@ -13,22 +13,14 @@ retro.data.Integrations.add_custom_path(os.path.abspath("./games"))
 from datetime import datetime
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import (
-    SubprocVecEnv,
-    VecFrameStack,
-    VecNormalize,
-    VecTransposeImage,
-)
 
 from src.callbacks import initialize_callbacks
 from src.config import PPOConfig, load_from_yaml, save_to_yaml
 from src.env_helpers import (
-    make_retro,
+    create_vectorized_env,
     read_statenames_from_folder,
     split_initial_states,
-    wrap_deepmind_retro,
 )
-from src.networks.residual_extractor import ResidualCNN
 
 
 def create_logname(saved_model_path, continue_training, prefix="ppo_super_tennis"):
@@ -106,48 +98,14 @@ def main():
         print("Saving configuration file for run ...")
         save_to_yaml(config, os.path.join("logs", logname, "config.yml"))
 
-    def make_env_wrapper(env_states):
-        def make_env():
-            env = make_retro(
-                game=game,
-                states=env_states,
-                scenario=config.scenario,
-                render_mode=render_mode,
-                max_episode_steps=config.max_episode_steps,
-                seed=config.seed,
-            )
-            env = wrap_deepmind_retro(env, config)
-            return env
-
-        return make_env
-
     state_splits = split_initial_states(states, config.n_envs)
 
     # create training and evaluation environments
-    venv = VecTransposeImage(
-        VecFrameStack(
-            VecNormalize(
-                SubprocVecEnv([make_env_wrapper(split) for split in state_splits]),
-                norm_obs=False,
-                norm_reward=True,
-                gamma=config.gamma,
-                clip_reward=10.0,
-            ),
-            n_stack=4,
-        )
+    venv = create_vectorized_env(
+        config, state_splits, render_mode, training=True, loop_states=False
     )
-    eval_venv = VecTransposeImage(
-        VecFrameStack(
-            VecNormalize(
-                SubprocVecEnv([make_env_wrapper(states)]),
-                training=False,
-                clip_reward=10.0,
-                gamma=config.gamma,
-                norm_obs=False,
-                norm_reward=True,
-            ),
-            n_stack=4,
-        ),
+    eval_venv = create_vectorized_env(
+        config, [states], render_mode, training=False, loop_states=True
     )
 
     # additional callbacks

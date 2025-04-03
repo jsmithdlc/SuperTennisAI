@@ -1,8 +1,6 @@
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Union
 
-import retro
-import torch.nn as nn
 import yaml
 
 from src.networks.impala_cnn import ImpalaCNN64
@@ -13,6 +11,7 @@ from src.networks.residual_extractor import ResidualCNN
 class ExperimentConfig:
     algo_name: str = "Generic"
     seed: int = 23
+    loop_through_initial_states: bool = False
 
     # Common Experiment params
     initial_lr: float = 2.5e-4
@@ -22,8 +21,9 @@ class ExperimentConfig:
     n_steps: int = 512
     n_envs: int = 8
     total_timesteps: int = 100_000_000
-    max_episode_steps: int = 50_000
+    max_episode_steps: int = 10_000
     scenario: Union[None, str] = None
+    norm_rewards: bool = True
 
     # PREPROCESSING steps to be applied to environment
     skip_animations: bool = False

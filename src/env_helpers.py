@@ -1,11 +1,16 @@
 import os
 
-import gymnasium as gym
 import numpy as np
 import retro
 from gymnasium.wrappers.time_limit import TimeLimit
 from stable_baselines3.common.atari_wrappers import ClipRewardEnv, WarpFrame
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import (
+    SubprocVecEnv,
+    VecFrameStack,
+    VecNormalize,
+    VecTransposeImage,
+)
 
 from src.config import ExperimentConfig
 from src.wrappers import (
@@ -29,12 +34,22 @@ def read_statenames_from_folder(folder):
     return statenames
 
 
-def make_retro(*, game, states, max_episode_steps=4500, seed=None, **kwargs):
+def make_retro(
+    *,
+    game,
+    states,
+    max_episode_steps=4500,
+    seed=None,
+    loop_through_initial_states: bool = False,
+    **kwargs
+):
     env = retro.make(
         game, retro.State.DEFAULT, inttype=retro.data.Integrations.ALL, **kwargs
     )
     env = SuperTennisDiscretizer(env)
-    env = InitialStateSetterWrapper(env, states=states, seed=seed)
+    env = InitialStateSetterWrapper(
+        env, states=states, seed=seed, loop_through_states=loop_through_initial_states
+    )
     if max_episode_steps is not None:
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
     return env
@@ -94,3 +109,59 @@ def split_initial_states(initial_states: list[str], n_envs: int) -> list[list[st
         for _ in range(n_envs % len(initial_states)):
             state_splits.append(initial_states)
     return state_splits
+
+
+def make_env_wrapper(
+    game: str,
+    render_mode: str | None,
+    env_states: list[str],
+    loop_through_states: bool,
+    config: ExperimentConfig,
+):
+    def make_env():
+        env = make_retro(
+            game=game,
+            states=env_states,
+            scenario=config.scenario,
+            render_mode=render_mode,
+            max_episode_steps=config.max_episode_steps,
+            seed=config.seed,
+            loop_through_initial_states=loop_through_states,
+        )
+        env = wrap_deepmind_retro(env, config)
+        return env
+
+    return make_env
+
+
+def create_vectorized_env(
+    config: ExperimentConfig,
+    states_per_env: list[list[str]],
+    render_mode: str | None,
+    training: bool,
+    loop_states: bool,
+):
+    vec_env = SubprocVecEnv(
+        [
+            make_env_wrapper(
+                "SuperTennis-Snes",
+                render_mode=render_mode,
+                env_states=states,
+                loop_through_states=loop_states,
+                config=config,
+            )
+            for states in states_per_env
+        ]
+    )
+    if config.norm_rewards:
+        vec_env = VecNormalize(
+            vec_env,
+            training=training,
+            norm_obs=False,
+            norm_reward=True,
+            gamma=config.gamma,
+            clip_reward=10.0,
+        )
+    vec_env = VecFrameStack(vec_env, n_stack=4)
+    vec_env = VecTransposeImage(vec_env)
+    return vec_env

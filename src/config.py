@@ -5,6 +5,7 @@ import retro
 import torch.nn as nn
 import yaml
 
+from src.networks.impala_cnn import ImpalaCNN64
 from src.networks.residual_extractor import ResidualCNN
 
 
@@ -63,9 +64,10 @@ class PPOConfig(ExperimentConfig):
     gae_lambda: float = 0.95
     max_grad_norm: float = 0.5
     vf_coef: float = 0.5
-    features_extractor_class: Literal["NatureCNN", "ResidualCNN"] = "NatureCNN"
-    features_extractor_dim: int = 1024
-    features_extractor_dropout: float = 0.1
+    features_extractor_class: Literal["NatureCNN", "ResidualCNN", "ImpalaCNN"] = (
+        "NatureCNN"
+    )
+    features_extractor_dim: int = 256
 
     def get_policy_params(self) -> dict[str, Any]:
         base_params = super().get_policy_params()
@@ -85,7 +87,6 @@ class PPOConfig(ExperimentConfig):
                             self.features_extractor_class
                         ),
                         "features_extractor_kwargs": {
-                            "dropout": self.features_extractor_dropout,
                             "features_dim": self.features_extractor_dim,
                         },
                     }
@@ -96,6 +97,8 @@ class PPOConfig(ExperimentConfig):
     def _get_feature_extractor_class(self, name: str) -> type:
         if name == "ResidualCNN":
             return ResidualCNN
+        elif name == "ImpalaCNN":
+            return ImpalaCNN64
         else:
             raise NotImplementedError(
                 f"Features extractor for: {name} not yet implemented"

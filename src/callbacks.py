@@ -191,6 +191,7 @@ def initialize_callbacks(
         save_freq=config.save_freq // config.n_envs,
         save_path=os.path.join("./logs", logname, "checkpoints"),
         name_prefix="ppo_supertennis",
+        save_vecnormalize=True,
     )
     extra_metric_logger = LogExtraEpisodeStatsCallback(
         ["faults", "stall_count", "ball_returns"],

@@ -16,6 +16,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecFrameStack,
+    VecNormalize,
     VecTransposeImage,
 )
 
@@ -92,9 +93,8 @@ def main():
         total_timesteps=400_000_000,
         stats_window_size=32,
         scenario="games/SuperTennis-Snes/scenario.json",
-        features_extractor_class="ResidualCNN",
-        features_extractor_dim=512,
-        features_extractor_dropout=0.0,
+        features_extractor_class="ImpalaCNN",
+        features_extractor_dim=256,
     )
 
     if continue_training:
@@ -126,13 +126,26 @@ def main():
     # create training and evaluation environments
     venv = VecTransposeImage(
         VecFrameStack(
-            SubprocVecEnv([make_env_wrapper(split) for split in state_splits]),
+            VecNormalize(
+                SubprocVecEnv([make_env_wrapper(split) for split in state_splits]),
+                norm_obs=False,
+                norm_reward=True,
+                gamma=config.gamma,
+                clip_reward=10.0,
+            ),
             n_stack=4,
         )
     )
     eval_venv = VecTransposeImage(
         VecFrameStack(
-            SubprocVecEnv([make_env_wrapper(states)]),
+            VecNormalize(
+                SubprocVecEnv([make_env_wrapper(states)]),
+                training=False,
+                clip_reward=10.0,
+                gamma=config.gamma,
+                norm_obs=False,
+                norm_reward=True,
+            ),
             n_stack=4,
         ),
     )

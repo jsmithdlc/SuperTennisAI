@@ -22,8 +22,7 @@ class ResidualCNN(BaseFeaturesExtractor):
     def __init__(
         self,
         observation_space: gym.Space,
-        features_dim: int = 1024,
-        dropout: float = 0.1,
+        features_dim: int = 1024
     ):
         super().__init__(observation_space, features_dim)
         n_input_channels = observation_space.shape[0]  # e.g. 4 with FrameStack(4)
@@ -49,7 +48,7 @@ class ResidualCNN(BaseFeaturesExtractor):
             cnn_output_dim = sample_output.shape[1]
 
         self.linear = nn.Sequential(
-            nn.Linear(cnn_output_dim, features_dim), nn.ReLU(), nn.Dropout(p=dropout)
+            nn.Linear(cnn_output_dim, features_dim), nn.ReLU())
         )
 
     def forward(self, observations):

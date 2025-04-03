@@ -63,7 +63,7 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
         "n_steps": n_steps,
         "batch_size": batch_size,
         "gamma": gamma,
-        "learning_rate": learning_rate,
+        "initial_lr": learning_rate,
         "ent_coef": ent_coef,
         "clip_range": clip_range,
         "vf_coef": vf_coef,
@@ -125,7 +125,7 @@ def objective(trial: optuna.Trial) -> float:
 
     nan_encountered = False
     try:
-        model.learn(N_TIMESTEPS, callback=[eval_callback, HParamCallback()])
+        model.learn(N_TIMESTEPS, callback=[eval_callback, HParamCallback(config)])
     except AssertionError as e:
         # Sometimes, random hyperparams can generate NaN.
         print(e)
@@ -162,10 +162,9 @@ if __name__ == "__main__":
         pruner=pruner,
         direction="maximize",
         load_if_exists=True,
-        n_jobs=1,
     )
     try:
-        study.optimize(objective, n_trials=N_TRIALS)
+        study.optimize(objective, n_trials=N_TRIALS, n_jobs=1)
     except KeyboardInterrupt:
         pass
 

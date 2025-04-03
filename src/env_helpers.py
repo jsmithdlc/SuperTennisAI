@@ -111,7 +111,7 @@ def split_initial_states(initial_states: list[str], n_envs: int) -> list[list[st
     return state_splits
 
 
-def make_env_wrapper(
+def _make_env_wrapper(
     game: str,
     render_mode: str | None,
     env_states: list[str],
@@ -143,7 +143,7 @@ def create_vectorized_env(
 ):
     vec_env = SubprocVecEnv(
         [
-            make_env_wrapper(
+            _make_env_wrapper(
                 "SuperTennis-Snes",
                 render_mode=render_mode,
                 env_states=states,

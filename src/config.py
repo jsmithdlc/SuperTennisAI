@@ -21,7 +21,9 @@ class ExperimentConfig:
     n_steps: int = 512
     n_envs: int = 8
     total_timesteps: int = 100_000_000
-    max_episode_steps: int = 10_000
+    max_episode_steps: int = (
+        40_000  # IF USING FRAME_SKIPPING, MUST CONSIDER n_skip * max_episode steps
+    )
     scenario: Union[None, str] = None
     norm_rewards: bool = True
 

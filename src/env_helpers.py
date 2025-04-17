@@ -140,6 +140,7 @@ def create_vectorized_env(
     render_mode: str | None,
     training: bool,
     loop_states: bool,
+    vec_normalize_path: str | None = None,
 ):
     vec_env = SubprocVecEnv(
         [
@@ -154,14 +155,17 @@ def create_vectorized_env(
         ]
     )
     if config.norm_rewards:
-        vec_env = VecNormalize(
-            vec_env,
-            training=training,
-            norm_obs=False,
-            norm_reward=True,
-            gamma=config.gamma,
-            clip_reward=10.0,
-        )
+        if vec_normalize_path is None:
+            vec_env = VecNormalize(
+                vec_env,
+                training=training,
+                norm_obs=False,
+                norm_reward=True,
+                gamma=config.gamma,
+                clip_reward=10.0,
+            )
+        else:
+            vec_env = VecNormalize.load(vec_normalize_path, vec_env)
     vec_env = VecFrameStack(vec_env, n_stack=4)
     vec_env = VecTransposeImage(vec_env)
     return vec_env

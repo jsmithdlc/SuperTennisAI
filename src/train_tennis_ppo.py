@@ -59,14 +59,15 @@ def load_saved_model(env, model_path, config, continue_training):
 
 def main():
     render_mode = None
-    game = "SuperTennis-Snes"
     states = read_statenames_from_folder(
         "games/SuperTennis-Snes/hard-court_easy-opponents_states"
     )
 
-    continue_training = False
-    saved_model_path = None
-    exp_prefix = "ppo_multi_states_large_network"
+    continue_training = True
+    saved_model_path = "logs/ppo_multi_states_resnet_05_04_2025__20_29_57/checkpoints/ppo_supertennis_141000000_steps.zip"
+    vec_normalize_path = "logs/ppo_multi_states_resnet_05_04_2025__20_29_57/checkpoints/ppo_supertennis_vecnormalize_141000000_steps.pkl"
+
+    exp_prefix = "ppo_multi_states_resnet"
 
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
     os.makedirs(os.path.join("logs", logname), exist_ok=True)
@@ -74,19 +75,23 @@ def main():
     # initialize configuration
     config = PPOConfig(
         n_envs=8,
+        initial_lr=1e-4,
+        n_epochs=5,
         clip_range=0.2,
-        ent_coef=0.01,
+        ent_coef=0.005,
         clip_rewards=False,
         stall_penalty=0.5,
         fault_penalty=0.5,
+        gamma=0.995,
         ball_return_reward=0.2,
-        n_steps=256,
+        n_steps=512,
         batch_size=1024,
         total_timesteps=400_000_000,
         stats_window_size=32,
         scenario="games/SuperTennis-Snes/scenario.json",
         features_extractor_class="ImpalaCNN",
-        features_extractor_dim=256,
+        features_extractor_dim=128,
+        vf_coef=0.7,
     )
 
     if continue_training:
@@ -102,7 +107,12 @@ def main():
 
     # create training and evaluation environments
     venv = create_vectorized_env(
-        config, state_splits, render_mode, training=True, loop_states=False
+        config,
+        state_splits,
+        render_mode,
+        training=True,
+        loop_states=False,
+        vec_normalize_path=vec_normalize_path,
     )
     eval_venv = create_vectorized_env(
         config, [states], render_mode, training=False, loop_states=True

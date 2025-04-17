@@ -36,21 +36,24 @@ def record_game(model, env: gym.Env, video_path, video_length=1000):
         video_path,
         record_video_trigger=lambda x: x == 0,
         video_length=video_length,
-        name_prefix=f"agent_ppo",
+        name_prefix="agent_ppo",
     )
     run_episode(model, video_env)
 
 
 def main():
     states = [
-        "all_initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsRich.1-set.Clay.state"
+        "hard_initial_states/SuperTennis.Singles.PlayerServes.PlayerBot.MattvsBarb.1-set.Hard.state"
     ]
 
     scenario = "games/SuperTennis-Snes/scenario.json"
     render_mode = "human"
-    logname = "logs/ppo_multi_states_large_network_03_04_2025__07_53_45"
+    logname = "logs/ppo_multi_states_resnet_05_04_2025__20_29_57"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_2000000_steps.zip"
+    model_path = f"{logname}/checkpoints/ppo_supertennis_145000000_steps.zip"
+    vec_normalize_path = (
+        f"{logname}/checkpoints/ppo_supertennis_vecnormalize_145000000_steps.pkl"
+    )
     video_path = os.path.join(logname, "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))
 
@@ -58,7 +61,12 @@ def main():
     config.scenario = scenario
 
     venv = create_vectorized_env(
-        config, [states], render_mode, training=False, loop_states=True
+        config,
+        [states],
+        render_mode,
+        training=False,
+        loop_states=True,
+        vec_normalize_path=vec_normalize_path,
     )
     model = PPO.load(path=model_path, env=venv)
     if render_mode == "rgb_array":

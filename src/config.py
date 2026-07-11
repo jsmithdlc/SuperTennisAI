@@ -32,6 +32,11 @@ class ExperimentConfig:
     clip_rewards: bool = True  # when reward scale matters, this should be set to False.
     sticky_prob: float = 0.25
     n_skip: int = 4
+    # frame size fed to the CNN after warping. Defaults match the previous
+    # hardcoded WarpFrame(84, 84) behaviour so old saved configs (which predate
+    # these fields) keep loading a policy with a matching observation shape.
+    frame_width: int = 84
+    frame_height: int = 84
 
     # REWARD function modifications
     stall_penalty: float = 1.0
@@ -63,6 +68,11 @@ class PPOConfig(ExperimentConfig):
     # POLICY parameters to be set during creation
     clip_range: float = 0.1
     ent_coef: float = 0.01
+    # entropy coefficient at the start of training, linearly annealed down to
+    # `ent_coef` by `callbacks.EntropyCoefScheduleCallback` (SB3's PPO only
+    # accepts a fixed ent_coef, unlike learning_rate/clip_range). Defaults to
+    # `ent_coef` so configs saved before this field existed see no change.
+    ent_coef_initial: float = 0.01
     gae_lambda: float = 0.95
     max_grad_norm: float = 0.5
     vf_coef: float = 0.5
@@ -75,7 +85,9 @@ class PPOConfig(ExperimentConfig):
         base_params = super().get_policy_params()
         base_params.update(
             {
-                "ent_coef": self.ent_coef,
+                # starting value; EntropyCoefScheduleCallback anneals it toward
+                # `ent_coef` over the course of training
+                "ent_coef": self.ent_coef_initial,
                 "gae_lambda": self.gae_lambda,
                 "max_grad_norm": self.max_grad_norm,
                 "vf_coef": self.vf_coef,

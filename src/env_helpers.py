@@ -63,7 +63,7 @@ def wrap_deepmind_retro(env, config: ExperimentConfig):
         env = SkipAnimationsWrapper(env)
     env = StickyActionWrapper(env, config.sticky_prob)
     env = FrameSkip(env, n_skip=config.n_skip)
-    env = WarpFrame(env)
+    env = WarpFrame(env, width=config.frame_width, height=config.frame_height)
     env = StallPenaltyWrapper(
         env,
         base_steps=(

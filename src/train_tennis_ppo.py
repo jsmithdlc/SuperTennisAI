@@ -79,6 +79,9 @@ def main():
         n_epochs=5,
         clip_range=0.2,
         ent_coef=0.005,
+        # start training with more exploration, annealed down to ent_coef
+        # above (see callbacks.EntropyCoefScheduleCallback)
+        ent_coef_initial=0.02,
         clip_rewards=False,
         stall_penalty=0.5,
         fault_penalty=0.5,
@@ -92,6 +95,15 @@ def main():
         features_extractor_class="ImpalaCNN",
         features_extractor_dim=128,
         vf_coef=0.7,
+        # finer-grained control for reaching/returning balls: less action
+        # persistence than the Atari-style defaults (n_skip=4, sticky_prob=0.25)
+        n_skip=3,
+        sticky_prob=0.1,
+        # preserve native 256x224 aspect ratio at higher resolution than the
+        # previous hardcoded 84x84 (which also squashed the aspect ratio),
+        # so the ball stays visible when far from the player
+        frame_width=128,
+        frame_height=112,
     )
 
     if continue_training:

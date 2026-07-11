@@ -165,6 +165,30 @@ class LogExtraEpisodeStatsCallback(BaseCallback):
         return True
 
 
+class EntropyCoefScheduleCallback(BaseCallback):
+    """Linearly anneals PPO's entropy coefficient over the course of training.
+
+    Stable Baselines3's PPO only accepts a fixed `ent_coef` (unlike
+    `learning_rate`/`clip_range`, which accept a schedule), so this callback
+    mutates `model.ent_coef` directly each step, using the same progress
+    fraction SB3 computes internally for those schedules.
+
+    Attributes:
+        initial (float): entropy coefficient at the start of training
+        final (float): entropy coefficient at the end of training
+    """
+
+    def __init__(self, initial: float, final: float, verbose: int = 0):
+        super().__init__(verbose)
+        self.initial = initial
+        self.final = final
+
+    def _on_step(self) -> bool:
+        progress_remaining = self.model._current_progress_remaining
+        self.model.ent_coef = self.final + (self.initial - self.final) * progress_remaining
+        return True
+
+
 def initialize_callbacks(
     eval_env: gym.Env, config: ExperimentConfig, logname: str
 ) -> list[BaseCallback]:
@@ -198,4 +222,9 @@ def initialize_callbacks(
         log_freq=config.log_interval * config.n_steps * config.n_envs,
         stats_window_size=config.stats_window_size,
     )
-    return [eval_cb, ckpt_callback, HParamCallback(config), extra_metric_logger]
+    callback_list = [eval_cb, ckpt_callback, HParamCallback(config), extra_metric_logger]
+    if hasattr(config, "ent_coef_initial"):
+        callback_list.append(
+            EntropyCoefScheduleCallback(config.ent_coef_initial, config.ent_coef)
+        )
+    return callback_list

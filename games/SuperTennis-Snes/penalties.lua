@@ -40,7 +40,6 @@ function compute_stalling_penalty(playerServeValue, frameCount)
             -- if recurring
             FramesTillPenalty = 80
             FrameStartStalling = frameCount
-            print("Adding penalty for stalling")
             return StallPenalty
         end
     else
@@ -55,7 +54,6 @@ end
 function compute_fault_penalty(inFault, totalGames)
     if inFault == 1 and totalGames % 2 == 0 and not PlayerHasFault then
         PlayerHasFault = (inFault == 1)
-        print("Adding penalty for faulting")
         return FaultPenalty
     end
     PlayerHasFault = (inFault == 1)

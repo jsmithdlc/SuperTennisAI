@@ -129,7 +129,6 @@ class StallPenaltyWrapper(gym.Wrapper):
                 # quickly
                 self.frame_counter = 0
                 self.frames_till_penalty = 80 // self._n_skip
-                print("Penalizing agent for stalling")
                 self.ep_stall_count += 1
                 return reward - self.penalty
         else:
@@ -184,7 +183,6 @@ class FaultPenaltyWrapper(gym.Wrapper):
             float: reward with penalization if player has entered fault state
         """
         if in_fault and not self.prev_in_fault:
-            print("Penalizing agent for comitting fault")
             self.ep_faults += 1
             self.prev_in_fault = bool(in_fault)
             return reward - self.fault_penalty

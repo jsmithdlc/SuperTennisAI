@@ -67,7 +67,7 @@ def main():
     saved_model_path = None
     vec_normalize_path = None
 
-    exp_prefix = "ppo_multi_states_resnet"
+    exp_prefix = "ppo_v0"
 
     logname = create_logname(saved_model_path, continue_training, prefix=exp_prefix)
     os.makedirs(os.path.join("logs", logname), exist_ok=True)
@@ -83,15 +83,15 @@ def main():
         # above (see callbacks.EntropyCoefScheduleCallback)
         ent_coef_initial=0.02,
         clip_rewards=False,
-        stall_penalty=0.5,
-        fault_penalty=0.5,
+        stall_penalty=0,
+        fault_penalty=0,
         gamma=0.995,
-        ball_return_reward=0.2,
+        ball_return_reward=0,
         n_steps=512,
         batch_size=1024,
-        total_timesteps=400_000_000,
+        total_timesteps=10_000_000,
         stats_window_size=32,
-        scenario="games/SuperTennis-Snes/scenario.json",
+        scenario="games/SuperTennis-Snes/scenario_lua.json",
         features_extractor_class="ImpalaCNN",
         features_extractor_dim=128,
         vf_coef=0.7,

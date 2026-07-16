@@ -8,6 +8,26 @@
       "address": 387,
       "type": "|u1"
     },
+    "ball_is_bottom_court": {
+      "address": 222,
+      "type": "|u1"
+    },
+    "ball_x_position": {
+      "address": 218,
+      "type": "<u2"
+    },
+    "ball_y_position": {
+      "address": 221,
+      "type": "<u2"
+    },
+    "ball_z_position": {
+      "address": 224,
+      "type": "<u2"
+    },
+    "frame_count": {
+      "address": 142,
+      "type": "<u2"
+    },
     "in_fault": {
       "address": 288,
       "type": "|u1"
@@ -16,9 +36,21 @@
       "address": 407,
       "type": "<d2"
     },
+    "player_assigned_bottom_court": {
+      "address": 2160,
+      "type": "|u1"
+    },
     "player_points": {
       "address": 405,
       "type": "<d2"
+    },
+    "player_position_x": {
+      "address": 2053,
+      "type": "<u2"
+    },
+    "player_position_y": {
+      "address": 2056,
+      "type": "<u2"
     },
     "player_serving": {
       "address": 2048,

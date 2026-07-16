@@ -48,11 +48,11 @@ def main():
 
     scenario = "games/SuperTennis-Snes/scenario.json"
     render_mode = "human"
-    logname = "logs/ppo_multi_states_resnet_05_04_2025__20_29_57"
+    logname = "logs/ppo_multi_states_resnet_10_07_2026__23_52_51"
 
-    model_path = f"{logname}/checkpoints/ppo_supertennis_145000000_steps.zip"
+    model_path = f"{logname}/checkpoints/ppo_supertennis_24000000_steps.zip"
     vec_normalize_path = (
-        f"{logname}/checkpoints/ppo_supertennis_vecnormalize_145000000_steps.pkl"
+        f"{logname}/checkpoints/ppo_supertennis_vecnormalize_24000000_steps.pkl"
     )
     video_path = os.path.join(logname, "videos")
     config = load_from_yaml(os.path.join(logname, "config.yml"))

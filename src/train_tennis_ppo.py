@@ -63,9 +63,9 @@ def main():
         "games/SuperTennis-Snes/hard-court_easy-opponents_states"
     )
 
-    continue_training = True
-    saved_model_path = "logs/ppo_multi_states_resnet_05_04_2025__20_29_57/checkpoints/ppo_supertennis_141000000_steps.zip"
-    vec_normalize_path = "logs/ppo_multi_states_resnet_05_04_2025__20_29_57/checkpoints/ppo_supertennis_vecnormalize_141000000_steps.pkl"
+    continue_training = False
+    saved_model_path = None
+    vec_normalize_path = None
 
     exp_prefix = "ppo_multi_states_resnet"
 

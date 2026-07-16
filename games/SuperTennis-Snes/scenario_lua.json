@@ -1,0 +1,24 @@
+{
+  "crop": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "done": {
+    "variables": {
+      "total_sets": {
+        "op": "equal",
+        "reference": 1
+      }
+    }
+  },
+  "reward": {
+    "script":"lua:calculate_reward"
+  },
+  "scripts":[
+    "script.lua",
+    "penalties.lua",
+    "secondary_rewards.lua"
+  ]
+}

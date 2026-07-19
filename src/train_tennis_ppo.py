@@ -29,14 +29,16 @@ def create_logname(saved_model_path, continue_training, prefix="ppo_super_tennis
     return f"{prefix}_{datetime.now().strftime('%d_%m_%Y__%H_%M_%S')}"
 
 
-def initialize_model(env, config: PPOConfig):
+def initialize_model(
+    env, config: PPOConfig, tensorboard_log: str = "./logs/", verbose: int = 1
+):
     model = PPO(
         policy="CnnPolicy",
-        tensorboard_log="./logs/",
+        tensorboard_log=tensorboard_log,
         env=env,
         learning_rate=lambda f: f * config.initial_lr,
         clip_range=lambda f: f * config.clip_range,
-        verbose=1,
+        verbose=verbose,
         seed=config.seed,
         stats_window_size=config.stats_window_size,
         **config.get_policy_params(),

@@ -16,9 +16,12 @@ from typing import Any
 import optuna
 from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
-from stable_baselines3.ppo import PPO
 
-from src.callbacks import HParamCallback
+from src.callbacks import (
+    EntropyCoefScheduleCallback,
+    HParamCallback,
+    LogExtraEpisodeStatsCallback,
+)
 from src.config import PPOConfig, save_to_yaml
 from src.env_helpers import (
     create_vectorized_env,
@@ -26,6 +29,7 @@ from src.env_helpers import (
     split_initial_states,
 )
 from src.hp_tuning.optuna_utils import TrialEvalCallback
+from src.train_tennis_ppo import initialize_model
 
 N_TRIALS = 100
 N_STARTUP_TRIALS = 10
@@ -34,6 +38,24 @@ LOGS_PATH = "./logs/optuna"
 N_TIMESTEPS = 2_000_000
 EVAL_FREQ = N_TIMESTEPS // N_EVALUATIONS
 N_EVAL_EPISODES = 4
+N_ENVS = 8
+
+# Kept fixed to match the current experiment in train_tennis_ppo.py's main():
+# reward shaping is disabled in favor of the Lua-scripted score reward, and
+# preprocessing uses the finer-grained control/resolution settings for
+# reaching and returning the ball. Update alongside that config if it changes.
+FIXED_PARAMS: dict[str, Any] = {
+    "n_envs": N_ENVS,
+    "scenario": "games/SuperTennis-Snes/scenario_lua.json",
+    "clip_rewards": False,
+    "stall_penalty": 0,
+    "fault_penalty": 0,
+    "ball_return_reward": 0,
+    "n_skip": 3,
+    "sticky_prob": 0.1,
+    "frame_width": 128,
+    "frame_height": 112,
+}
 
 
 def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
@@ -55,25 +77,25 @@ def sample_ppo_params(trial: optuna.Trial) -> dict[str, Any]:
         "features_extractor_dim", [128, 256]
     )
 
-    # TODO: account when using multiple envs
-    if batch_size > n_steps * 8:
+    if batch_size > n_steps * N_ENVS:
         batch_size = n_steps
 
     return {
+        **FIXED_PARAMS,
         "n_steps": n_steps,
         "batch_size": batch_size,
         "gamma": gamma,
         "initial_lr": learning_rate,
         "ent_coef": ent_coef,
+        # not itself tuned: EntropyCoefScheduleCallback anneals from this to
+        # `ent_coef`, so pin it to the sampled value (no annealing) to keep
+        # the search over `ent_coef` meaningful. See PPOConfig.get_policy_params.
+        "ent_coef_initial": ent_coef,
         "clip_range": clip_range,
         "vf_coef": vf_coef,
         "n_epochs": n_epochs,
         "features_extractor_class": "ImpalaCNN",
         "features_extractor_dim": features_extractor_dim,
-        "clip_rewards": False,
-        "stall_penalty": 0.5,
-        "fault_penalty": 0.5,
-        "ball_return_reward": 0.2,
     }
 
 
@@ -88,7 +110,6 @@ def objective(trial: optuna.Trial) -> float:
     state_splits = split_initial_states(states, config.n_envs)
 
     # create training and evaluation environments
-    # create training and evaluation environments
     venv = create_vectorized_env(
         config, state_splits, render_mode=None, training=True, loop_states=False
     )
@@ -101,18 +122,9 @@ def objective(trial: optuna.Trial) -> float:
     )
     os.makedirs(trial_path, exist_ok=True)
 
-    # Create the RL model.
-    model = PPO(
-        policy="CnnPolicy",
-        env=venv,
-        verbose=0,
-        seed=config.seed,
-        tensorboard_log=trial_path,
-        learning_rate=config.initial_lr,
-        clip_range=config.clip_range,
-        stats_window_size=config.stats_window_size,
-        **config.get_policy_params(),
-    )
+    # Create the RL model, matching train_tennis_ppo.py's construction (lr/clip_range
+    # schedules included) so tuned trials are representative of the real training run.
+    model = initialize_model(venv, config, tensorboard_log=trial_path, verbose=0)
 
     # Create the callback that will periodically evaluate and report the performance.
     eval_callback = TrialEvalCallback(
@@ -124,12 +136,28 @@ def objective(trial: optuna.Trial) -> float:
         eval_freq=(EVAL_FREQ) // config.n_envs,
         deterministic=False,
     )
+    extra_metric_logger = LogExtraEpisodeStatsCallback(
+        ["faults", "stall_count", "ball_returns"],
+        log_freq=config.log_interval * config.n_steps * config.n_envs,
+        stats_window_size=config.stats_window_size,
+    )
+    entropy_schedule = EntropyCoefScheduleCallback(
+        config.ent_coef_initial, config.ent_coef
+    )
 
     save_to_yaml(config, os.path.join(trial_path, "config.yml"))
 
     nan_encountered = False
     try:
-        model.learn(N_TIMESTEPS, callback=[eval_callback, HParamCallback(config)])
+        model.learn(
+            N_TIMESTEPS,
+            callback=[
+                eval_callback,
+                HParamCallback(config),
+                extra_metric_logger,
+                entropy_schedule,
+            ],
+        )
     except AssertionError as e:
         # Sometimes, random hyperparams can generate NaN.
         print(e)
